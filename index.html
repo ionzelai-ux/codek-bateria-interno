@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODEK · Batería de Ejercicios</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --granate:#97272E;--granate-d:#6e1b21;
+  --black:#0d0d0d;--gd:#1a1a1a;--gm:#242424;--gl:#333;
+  --gt:#888;--cream:#F8F1E3;--green:#3aad6e;--yellow:#e8a020;--red:#d03030;
+  --bebas:'Bebas Neue',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);min-height:100vh;font-size:15px}
+.header{background:var(--gd);padding:16px 20px;border-bottom:2px solid var(--granate);display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50}
+.header-title{font-family:var(--bebas);font-size:26px;letter-spacing:3px;color:var(--cream)}
+.header-sub{font-size:11px;color:var(--gt);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.badge-count{background:var(--granate);color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700}
+.toolbar{padding:12px 20px;background:var(--gd);border-bottom:1px solid var(--gl);display:flex;gap:10px;flex-wrap:wrap;position:sticky;top:73px;z-index:40}
+.search-input{flex:1;min-width:200px;background:var(--gm);border:1px solid var(--gl);border-radius:8px;padding:10px 14px;color:var(--cream);font-family:'Barlow',sans-serif;font-size:14px}
+.search-input:focus{outline:none;border-color:var(--granate)}
+.btn{border:none;cursor:pointer;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .15s;padding:10px 16px;font-size:13px}
+.btn-primary{background:var(--granate);color:#fff}
+.btn-secondary{background:var(--gm);color:var(--cream);border:1px solid var(--gl)}
+.btn-sm{padding:6px 10px;font-size:11px}
+.btn-danger{background:rgba(208,48,48,.15);color:var(--red);border:1px solid rgba(208,48,48,.3)}
+.filters{padding:10px 20px;background:var(--gd);border-bottom:1px solid var(--gl);display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:129px;z-index:39}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-lbl{font-size:11px;color:var(--gt);text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+.chip{padding:5px 10px;border-radius:14px;border:1.5px solid var(--gl);background:none;color:var(--gt);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:'Barlow',sans-serif}
+.chip.active{border-color:var(--granate);color:var(--cream);background:rgba(151,39,46,.15)}
+.chip.mini{padding:3px 8px;font-size:10px}
+.ex-row{background:var(--gd);margin:8px 20px;border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;border:1px solid transparent}
+.ex-row:hover{background:var(--gm);border-color:var(--gl)}
+.ex-main{flex:1;min-width:0}
+.ex-name{font-weight:700;font-size:15px;color:var(--cream);margin-bottom:4px}
+.ex-meta{display:flex;flex-wrap:wrap;gap:5px}
+.meta-tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.tag-muscle{background:rgba(151,39,46,.2);color:var(--granate)}
+.tag-patron{background:rgba(232,160,32,.2);color:var(--yellow)}
+.tag-material{background:rgba(58,173,110,.15);color:var(--green)}
+.tag-entorno{background:rgba(136,136,136,.2);color:var(--gt)}
+.tag-disc{background:rgba(232,160,32,.15);color:var(--yellow)}
+.ex-empty-meta{font-size:11px;color:var(--gt);font-style:italic}
+.video-status{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;flex-shrink:0}
+.vs-yes{background:rgba(58,173,110,.15);color:var(--green);border:1px solid rgba(58,173,110,.3)}
+.vs-no{background:rgba(208,48,48,.1);color:var(--red);border:1px solid rgba(208,48,48,.3)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--gd);border-radius:14px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:24px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-family:var(--bebas);font-size:28px;letter-spacing:2px}
+.modal-close{background:var(--gl);border:none;color:var(--cream);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gt);margin-bottom:8px}
+.form-input,.form-textarea{width:100%;background:var(--gm);border:1.5px solid var(--gl);border-radius:8px;padding:12px 14px;color:var(--cream);font-family:'Barlow',sans-serif;font-size:15px}
+.form-input:focus,.form-textarea:focus{outline:none;border-color:var(--granate)}
+.form-textarea{resize:vertical;min-height:70px}
+.multi-chips{display:flex;flex-wrap:wrap;gap:6px}
+.multi-chip{padding:7px 12px;border-radius:16px;border:1.5px solid var(--gl);background:none;color:var(--gt);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:'Barlow',sans-serif}
+.multi-chip.sel{border-color:var(--granate);color:var(--cream);background:rgba(151,39,46,.2)}
+.toggle-row{display:flex;align-items:center;gap:12px;background:var(--gm);border-radius:8px;padding:12px 14px}
+.toggle-lbl{flex:1;font-weight:700;font-size:14px}
+.toggle{position:relative;width:52px;height:28px;background:var(--gl);border-radius:14px;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--green)}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle.on::after{transform:translateX(24px)}
+.form-actions{display:flex;gap:10px;margin-top:20px}
+.form-actions .btn{flex:1;padding:14px;font-size:14px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--granate);color:#fff;padding:12px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:600;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.error{background:var(--red)}
+.toast.success{background:var(--green)}
+.empty-state{text-align:center;padding:64px 24px;color:var(--gt)}
+.empty-state .icon{font-size:56px;margin-bottom:16px}
+.empty-state h3{font-family:var(--bebas);font-size:26px;letter-spacing:2px;color:var(--cream);margin-bottom:8px}
+.spinner{width:36px;height:36px;border:3px solid var(--gl);border-top-color:var(--granate);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 20px;background:var(--gd);border-bottom:1px solid var(--gl)}
+.stat-box{background:var(--black);border-radius:8px;padding:8px 10px;text-align:center}
+.stat-val{font-family:var(--bebas);font-size:22px;color:var(--granate);line-height:1}
+.stat-lbl{font-size:9px;color:var(--gt);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.config-warning{background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.3);color:var(--yellow);padding:12px 16px;margin:14px 20px;border-radius:8px;font-size:13px;line-height:1.5}
+.config-warning strong{color:var(--cream)}
+.setup-info{background:var(--gm);border-radius:8px;padding:12px;margin:10px 0;font-size:13px;color:var(--gt);line-height:1.6}
+.setup-info code{background:var(--black);padding:2px 6px;border-radius:4px;color:var(--yellow);font-family:monospace;font-size:12px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="flex:1">
+    <div class="header-title">Batería de Ejercicios</div>
+    <div class="header-sub">Panel interno · CODEK Training</div>
+  </div>
+  <span class="badge-count" id="count-badge">0</span>
+  <button class="btn btn-secondary btn-sm" onclick="openSettings()">⚙</button>
+</div>
+<div id="config-warning" class="config-warning" style="display:none">
+  <strong>⚠️ Configuración pendiente:</strong> Conecta la app con Google Sheets pulsando ⚙
+</div>
+<div class="stats-bar">
+  <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Total</div></div>
+  <div class="stat-box"><div class="stat-val" id="stat-video-yes">0</div><div class="stat-lbl">Con vídeo</div></div>
+  <div class="stat-box"><div class="stat-val" id="stat-video-no">0</div><div class="stat-lbl">Sin vídeo</div></div>
+  <div class="stat-box"><div class="stat-val" id="stat-completos">0</div><div class="stat-lbl">Completos</div></div>
+</div>
+<div class="toolbar">
+  <input class="search-input" id="search" placeholder="🔍 Buscar ejercicio..." oninput="renderList()">
+  <button class="btn btn-primary" onclick="openNewEx()">+ Nuevo</button>
+</div>
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-lbl">Vídeo:</span>
+    <button class="chip mini active" data-filter="video" data-val="all" onclick="setFilter('video','all',this)">Todos</button>
+    <button class="chip mini" data-filter="video" data-val="SI" onclick="setFilter('video','SI',this)">Con vídeo</button>
+    <button class="chip mini" data-filter="video" data-val="NO" onclick="setFilter('video','NO',this)">Sin vídeo</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-lbl">Estado:</span>
+    <button class="chip mini active" data-filter="estado" data-val="all" onclick="setFilter('estado','all',this)">Todos</button>
+    <button class="chip mini" data-filter="estado" data-val="vacio" onclick="setFilter('estado','vacio',this)">Sin categorizar</button>
+    <button class="chip mini" data-filter="estado" data-val="completo" onclick="setFilter('estado','completo',this)">Completos</button>
+  </div>
+</div>
+<div id="list"><div class="empty-state"><div class="spinner"></div></div></div>
+
+<div class="modal-overlay" id="modal-ex">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nuevo Ejercicio</div>
+      <button class="modal-close" onclick="closeModal('modal-ex')">✕</button>
+    </div>
+    <div class="form-group"><label class="form-label">Nombre</label>
+      <input class="form-input" id="ex-nombre" placeholder="Ej: Sentadilla búlgara"></div>
+    <div class="form-group"><label class="form-label">Grupo muscular (multi)</label>
+      <div class="multi-chips" id="chips-grupo"></div></div>
+    <div class="form-group"><label class="form-label">Patrón de movimiento (multi)</label>
+      <div class="multi-chips" id="chips-patron"></div></div>
+    <div class="form-group"><label class="form-label">Materiales (multi)</label>
+      <div class="multi-chips" id="chips-materiales"></div></div>
+    <div class="form-group"><label class="form-label">Entorno (multi)</label>
+      <div class="multi-chips" id="chips-entorno"></div></div>
+    <div class="form-group"><label class="form-label">Disciplina (multi)</label>
+      <div class="multi-chips" id="chips-disciplina"></div></div>
+    <div class="form-group"><div class="toggle-row">
+      <div class="toggle-lbl">🎥 Vídeo grabado</div>
+      <div class="toggle" id="toggle-video" onclick="toggleVideo()"></div></div></div>
+    <div class="form-group"><label class="form-label">URL del vídeo</label>
+      <input class="form-input" id="ex-videourl" placeholder="https://..."></div>
+    <div class="form-group"><label class="form-label">Notas</label>
+      <textarea class="form-textarea" id="ex-notas" placeholder="Observaciones, tips..."></textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-ex')">Cancelar</button>
+      <button class="btn btn-danger" id="btn-delete" onclick="deleteEx()" style="display:none">🗑 Eliminar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="saveEx()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Configuración</div>
+      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL de Google Apps Script</label>
+      <input class="form-input" id="cfg-api" placeholder="https://script.google.com/macros/s/AKfyc.../exec">
+      <div class="setup-info" style="margin-top:10px">
+        <strong>Instrucciones:</strong><br>
+        1. Crea un Google Sheet nuevo<br>
+        2. Ve a <code>Extensiones → Apps Script</code><br>
+        3. Pega el código del archivo <code>apps-script.js</code><br>
+        4. Ejecuta la función <code>setupSheet</code> una vez (autoriza permisos)<br>
+        5. <code>Implementar → Nueva implementación → Aplicación web</code><br>
+        6. Ejecutar como: <strong>yo</strong> · Acceso: <strong>Cualquier persona</strong><br>
+        7. Copia la URL y pégala arriba
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-settings')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Guardar y conectar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const OPCIONES = {
+  grupo: ['Hombro','Pecho','Espalda','Pierna','Glúteo','Bíceps','Tríceps','Core','Antebrazo','Full body','Cardio'],
+  patron: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Sentadilla (rodilla dom.)','Bisagra (cadera dom.)','Zancada','Rotación','Anti-rotación','Locomoción','Isométrico'],
+  materiales: ['Peso corporal','Barra','Mancuernas','Kettlebell','Polea','Gomas','Anillas','TRX','Cajón','Balón medicinal','Landmine','Banda corta','Balón suizo','Ninguno'],
+  entorno: ['Clase','Rack','Ambos'],
+  disciplina: ['Calistenia','Funcional','Gym','Movilidad','Cardio']
+};
+let API_URL = localStorage.getItem('bateria_api') || '';
+let ejercicios = [];
+let editId = null;
+let filters = { video: 'all', estado: 'all' };
+
+function init(){
+  renderChipsInModal();
+  if(!API_URL){
+    document.getElementById('config-warning').style.display = 'block';
+    document.getElementById('list').innerHTML = '<div class="empty-state"><div class="icon">⚙</div><h3>Sin configurar</h3><p>Configura la conexión con Google Sheets pulsando ⚙</p></div>';
+    return;
+  }
+  loadData();
+}
+
+function renderChipsInModal(){
+  Object.keys(OPCIONES).forEach(key => {
+    const container = document.getElementById('chips-' + key);
+    if(!container) return;
+    container.innerHTML = OPCIONES[key].map(opt =>
+      '<button type="button" class="multi-chip" data-key="'+key+'" data-val="'+opt+'" onclick="toggleChip(this)">'+opt+'</button>'
+    ).join('');
+  });
+}
+function toggleChip(btn){ btn.classList.toggle('sel'); }
+function toggleVideo(){ document.getElementById('toggle-video').classList.toggle('on'); }
+
+async function apiGet(action){
+  const url = API_URL + (API_URL.includes('?')?'&':'?') + 'action=' + action;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Error red');
+  return r.json();
+}
+async function apiPost(action, payload){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({action, ...payload})
+  });
+  if(!r.ok) throw new Error('Error red');
+  return r.json();
+}
+
+async function loadData(){
+  try {
+    document.getElementById('list').innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+    const res = await apiGet('list');
+    if(res.error){ showToast('Error: '+res.error,'error'); return; }
+    ejercicios = res.items || [];
+    renderList();
+  } catch(e){
+    showToast('Error al conectar','error');
+    document.getElementById('list').innerHTML = '<div class="empty-state"><div class="icon">❌</div><h3>Error de conexión</h3><p>Comprueba la URL en ⚙</p></div>';
+  }
+}
+
+function renderList(){
+  const search = document.getElementById('search').value.toLowerCase().trim();
+  const list = document.getElementById('list');
+  const total = ejercicios.length;
+  const conVideo = ejercicios.filter(e => (e.video_hecho||'').toUpperCase() === 'SI').length;
+  const sinVideo = total - conVideo;
+  const completos = ejercicios.filter(e => e.grupo_muscular && e.patron && e.materiales && e.entorno && e.disciplina).length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-video-yes').textContent = conVideo;
+  document.getElementById('stat-video-no').textContent = sinVideo;
+  document.getElementById('stat-completos').textContent = completos;
+  document.getElementById('count-badge').textContent = total;
+
+  let filtered = ejercicios.filter(e => {
+    if(search && !e.nombre.toLowerCase().includes(search)) return false;
+    if(filters.video !== 'all'){
+      const vh = (e.video_hecho||'').toUpperCase();
+      if(filters.video === 'SI' && vh !== 'SI') return false;
+      if(filters.video === 'NO' && vh === 'SI') return false;
+    }
+    if(filters.estado === 'vacio' && (e.grupo_muscular || e.patron || e.materiales)) return false;
+    if(filters.estado === 'completo' && !(e.grupo_muscular && e.patron && e.materiales && e.entorno && e.disciplina)) return false;
+    return true;
+  });
+
+  if(!filtered.length){
+    list.innerHTML = '<div class="empty-state"><div class="icon">🔎</div><h3>Sin resultados</h3><p>Ajusta los filtros</p></div>';
+    return;
+  }
+
+  filtered.sort((a,b) => {
+    const aEmpty = !a.grupo_muscular && !a.patron;
+    const bEmpty = !b.grupo_muscular && !b.patron;
+    if(aEmpty !== bEmpty) return aEmpty ? -1 : 1;
+    return a.nombre.localeCompare(b.nombre);
+  });
+  list.innerHTML = filtered.map(rowHtml).join('');
+}
+
+function rowHtml(e){
+  const grupos = (e.grupo_muscular||'').split(',').filter(Boolean).map(g => '<span class="meta-tag tag-muscle">'+g.trim()+'</span>').join('');
+  const patrones = (e.patron||'').split(',').filter(Boolean).map(p => '<span class="meta-tag tag-patron">'+p.trim()+'</span>').join('');
+  const mats = (e.materiales||'').split(',').filter(Boolean).map(m => '<span class="meta-tag tag-material">'+m.trim()+'</span>').join('');
+  const ents = (e.entorno||'').split(',').filter(Boolean).map(x => '<span class="meta-tag tag-entorno">'+x.trim()+'</span>').join('');
+  const discs = (e.disciplina||'').split(',').filter(Boolean).map(x => '<span class="meta-tag tag-disc">'+x.trim()+'</span>').join('');
+  const hasAny = grupos || patrones || mats || ents || discs;
+  const metaHtml = hasAny ? grupos+patrones+mats+ents+discs : '<span class="ex-empty-meta">Sin categorizar — pulsa para completar</span>';
+  const vh = (e.video_hecho||'').toUpperCase() === 'SI';
+  const vs = vh ? '<span class="video-status vs-yes">🎥 Vídeo</span>' : '<span class="video-status vs-no">Sin vídeo</span>';
+  return '<div class="ex-row" onclick="editEx(\''+e.id+'\')">'
+    +'<div class="ex-main"><div class="ex-name">'+escapeHtml(e.nombre)+'</div>'
+    +'<div class="ex-meta">'+metaHtml+'</div></div>'
+    +vs+'</div>';
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function setFilter(key, val, btn){
+  filters[key] = val;
+  document.querySelectorAll('.chip.mini[data-filter="'+key+'"]').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function openNewEx(){
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Nuevo Ejercicio';
+  document.getElementById('ex-nombre').value = '';
+  document.getElementById('ex-videourl').value = '';
+  document.getElementById('ex-notas').value = '';
+  document.getElementById('toggle-video').classList.remove('on');
+  document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
+  document.getElementById('btn-delete').style.display = 'none';
+  openModal('modal-ex');
+}
+
+function editEx(id){
+  const e = ejercicios.find(x => x.id === id);
+  if(!e) return;
+  editId = id;
+  document.getElementById('modal-title').textContent = '✏️ ' + e.nombre;
+  document.getElementById('ex-nombre').value = e.nombre || '';
+  document.getElementById('ex-videourl').value = e.video_url || '';
+  document.getElementById('ex-notas').value = e.notas || '';
+  const vh = (e.video_hecho||'').toUpperCase() === 'SI';
+  document.getElementById('toggle-video').classList.toggle('on', vh);
+  document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
+  const fieldMap = {grupo:'grupo_muscular', patron:'patron', materiales:'materiales', entorno:'entorno', disciplina:'disciplina'};
+  Object.keys(fieldMap).forEach(key => {
+    const vals = (e[fieldMap[key]]||'').split(',').map(v => v.trim()).filter(Boolean);
+    vals.forEach(val => {
+      const chip = document.querySelector('.multi-chip[data-key="'+key+'"][data-val="'+val+'"]');
+      if(chip) chip.classList.add('sel');
+    });
+  });
+  document.getElementById('btn-delete').style.display = 'inline-block';
+  openModal('modal-ex');
+}
+
+async function saveEx(){
+  const nombre = document.getElementById('ex-nombre').value.trim();
+  if(!nombre){ showToast('El nombre es obligatorio','error'); return; }
+  const getChipVals = key => Array.from(document.querySelectorAll('.multi-chip[data-key="'+key+'"].sel')).map(c => c.dataset.val).join(', ');
+  const data = {
+    nombre,
+    grupo_muscular: getChipVals('grupo'),
+    patron: getChipVals('patron'),
+    materiales: getChipVals('materiales'),
+    entorno: getChipVals('entorno'),
+    disciplina: getChipVals('disciplina'),
+    video_hecho: document.getElementById('toggle-video').classList.contains('on') ? 'SI' : 'NO',
+    video_url: document.getElementById('ex-videourl').value.trim(),
+    notas: document.getElementById('ex-notas').value.trim()
+  };
+  if(editId) data.id = editId;
+  const btn = document.getElementById('btn-save');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try {
+    const action = editId ? 'update' : 'add';
+    const res = await apiPost(action, {data});
+    if(res.error){ showToast('Error: '+res.error,'error'); return; }
+    closeModal('modal-ex');
+    showToast(editId ? '✅ Actualizado' : '✅ Añadido','success');
+    await loadData();
+  } catch(e){ showToast('Error al guardar','error'); }
+  finally { btn.textContent = 'Guardar'; btn.disabled = false; }
+}
+
+async function deleteEx(){
+  if(!editId) return;
+  if(!confirm('¿Eliminar este ejercicio?')) return;
+  try {
+    const res = await apiPost('delete', {id: editId});
+    if(res.error){ showToast('Error: '+res.error,'error'); return; }
+    closeModal('modal-ex');
+    showToast('🗑 Eliminado','success');
+    await loadData();
+  } catch(e){ showToast('Error al eliminar','error'); }
+}
+
+function openSettings(){
+  document.getElementById('cfg-api').value = API_URL;
+  openModal('modal-settings');
+}
+function saveConfig(){
+  const url = document.getElementById('cfg-api').value.trim();
+  if(!url){ showToast('Pega la URL','error'); return; }
+  API_URL = url;
+  localStorage.setItem('bateria_api', url);
+  document.getElementById('config-warning').style.display = 'none';
+  closeModal('modal-settings');
+  loadData();
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+let toastT;
+function showToast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 2800);
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target===o) closeModal(o.id); });
+});
+init();
+</script>
+</body>
+</html>
