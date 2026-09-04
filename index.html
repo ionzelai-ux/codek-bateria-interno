@@ -91,6 +91,11 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .cat-filter-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gt);margin-bottom:6px}
 .multi-chip.cf-active{border-color:var(--yellow);color:var(--cream);background:rgba(232,160,32,.2)}
 .cat-count-badge{background:var(--yellow);color:#000;font-weight:800;padding:2px 7px;border-radius:10px;font-size:10px;margin-left:6px}
+.tabata-btn{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:1.5px solid var(--gl);background:var(--gm);color:var(--gt);transition:all .15s;flex-shrink:0;font-family:'Barlow Condensed',sans-serif}
+.tabata-btn:hover{border-color:var(--yellow);color:var(--cream)}
+.tabata-btn.on{background:rgba(232,160,32,.2);border-color:var(--yellow);color:var(--yellow)}
+.tabata-btn:active{transform:scale(.94)}
+.tabata-btn.saving{opacity:.5;pointer-events:none}
 </style>
 </head>
 <body>
@@ -415,10 +420,66 @@ function rowHtml(e){
   const metaHtml = hasAny ? grupos+patrones+mats+ents+discs : '<span class="ex-empty-meta">Sin categorizar — pulsa para completar</span>';
   const vh = (e.video_hecho||'').toUpperCase() === 'SI';
   const vs = vh ? '<span class="video-status vs-yes">🎥 Vídeo</span>' : '<span class="video-status vs-no">Sin vídeo</span>';
+  // Toggle rápido de Tábata
+  const discVals = (e.disciplina||'').split(',').map(v => v.trim()).filter(Boolean);
+  const isTabata = discVals.includes('Tábata');
+  const tabataBtn = '<button class="tabata-btn'+(isTabata?' on':'')+'" data-exid="'+e.id+'" onclick="toggleTabataQuick(event,\''+e.id+'\')" title="Marcar/desmarcar como Tábata">⚡ Tábata</button>';
   return '<div class="ex-row" onclick="editEx(\''+e.id+'\')">'
     +'<div class="ex-main"><div class="ex-name">'+escapeHtml(e.nombre)+'</div>'
     +'<div class="ex-meta">'+metaHtml+'</div></div>'
-    +vs+'</div>';
+    +tabataBtn+vs+'</div>';
+}
+
+async function toggleTabataQuick(evt, id){
+  evt.stopPropagation();  // no abrir el modal de edición
+  const e = ejercicios.find(x => x.id === id);
+  if(!e) return;
+  const btn = evt.currentTarget;
+  if(btn.classList.contains('saving')) return;
+  const discVals = (e.disciplina||'').split(',').map(v => v.trim()).filter(Boolean);
+  const hasTabata = discVals.includes('Tábata');
+  let newVals;
+  if(hasTabata){
+    newVals = discVals.filter(v => v !== 'Tábata');
+  } else {
+    newVals = discVals.concat(['Tábata']);
+  }
+  const newDisciplina = newVals.join(', ');
+  // Update UI optimista
+  btn.classList.toggle('on');
+  btn.classList.add('saving');
+  const prevDisc = e.disciplina;
+  e.disciplina = newDisciplina;
+  try {
+    const data = {
+      id: e.id,
+      nombre: e.nombre,
+      grupo_muscular: e.grupo_muscular || '',
+      patron: e.patron || '',
+      materiales: e.materiales || '',
+      entorno: e.entorno || '',
+      disciplina: newDisciplina,
+      video_hecho: e.video_hecho || 'NO',
+      video_url: e.video_url || '',
+      notas: e.notas || ''
+    };
+    const res = await apiPost('update', {data});
+    if(res.error){
+      // Revertir en caso de error
+      e.disciplina = prevDisc;
+      btn.classList.toggle('on');
+      showToast('Error: '+res.error,'error');
+    } else {
+      showToast(hasTabata ? '⚡ Tábata quitado' : '⚡ Marcado como Tábata','success');
+      renderList();  // refrescar tags visibles
+    }
+  } catch(err){
+    e.disciplina = prevDisc;
+    btn.classList.toggle('on');
+    showToast('Error al guardar','error');
+  } finally {
+    btn.classList.remove('saving');
+  }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
 function setFilter(key, val, btn){
