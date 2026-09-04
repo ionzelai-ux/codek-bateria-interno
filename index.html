@@ -86,6 +86,11 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .config-warning strong{color:var(--cream)}
 .setup-info{background:var(--gm);border-radius:8px;padding:12px;margin:10px 0;font-size:13px;color:var(--gt);line-height:1.6}
 .setup-info code{background:var(--black);padding:2px 6px;border-radius:4px;color:var(--yellow);font-family:monospace;font-size:12px}
+.cat-filter-block{margin-bottom:14px}
+.cat-filter-block:last-child{margin-bottom:0}
+.cat-filter-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gt);margin-bottom:6px}
+.multi-chip.cf-active{border-color:var(--yellow);color:var(--cream);background:rgba(232,160,32,.2)}
+.cat-count-badge{background:var(--yellow);color:#000;font-weight:800;padding:2px 7px;border-radius:10px;font-size:10px;margin-left:6px}
 </style>
 </head>
 <body>
@@ -110,7 +115,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
   <input class="search-input" id="search" placeholder="🔍 Buscar ejercicio..." oninput="renderList()">
   <button class="btn btn-primary" onclick="openNewEx()">+ Nuevo</button>
 </div>
-<div class="filters">
+<div class="filters" id="filters-bar">
   <div class="filter-group">
     <span class="filter-lbl">Vídeo:</span>
     <button class="chip mini active" data-filter="video" data-val="all" onclick="setFilter('video','all',this)">Todos</button>
@@ -122,6 +127,35 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
     <button class="chip mini active" data-filter="estado" data-val="all" onclick="setFilter('estado','all',this)">Todos</button>
     <button class="chip mini" data-filter="estado" data-val="vacio" onclick="setFilter('estado','vacio',this)">Sin categorizar</button>
     <button class="chip mini" data-filter="estado" data-val="completo" onclick="setFilter('estado','completo',this)">Completos</button>
+  </div>
+  <button class="btn btn-secondary btn-sm" id="btn-toggle-catfilters" onclick="toggleCatFilters()" style="margin-left:auto">▾ Filtros por categoría</button>
+  <button class="btn btn-danger btn-sm" id="btn-clear-catfilters" onclick="clearCatFilters()" style="display:none">✕ Limpiar</button>
+</div>
+
+<!-- PANEL DE FILTROS POR CATEGORÍA (multi-select) -->
+<div id="cat-filters-panel" style="display:none;padding:14px 20px;background:var(--gd);border-bottom:1px solid var(--gl)">
+  <div style="font-size:11px;color:var(--gt);margin-bottom:10px;line-height:1.5">
+    Marca una o varias opciones de cada categoría. Se mostrarán los ejercicios que cumplen <strong style="color:var(--yellow)">TODAS</strong> las categorías con al menos una opción seleccionada.
+  </div>
+  <div class="cat-filter-block">
+    <div class="cat-filter-title">Grupo muscular</div>
+    <div class="multi-chips" id="catfilter-chips-grupo"></div>
+  </div>
+  <div class="cat-filter-block">
+    <div class="cat-filter-title">Patrón de movimiento</div>
+    <div class="multi-chips" id="catfilter-chips-patron"></div>
+  </div>
+  <div class="cat-filter-block">
+    <div class="cat-filter-title">Materiales</div>
+    <div class="multi-chips" id="catfilter-chips-materiales"></div>
+  </div>
+  <div class="cat-filter-block">
+    <div class="cat-filter-title">Entorno</div>
+    <div class="multi-chips" id="catfilter-chips-entorno"></div>
+  </div>
+  <div class="cat-filter-block">
+    <div class="cat-filter-title">Disciplina</div>
+    <div class="multi-chips" id="catfilter-chips-disciplina"></div>
   </div>
 </div>
 <div id="list"><div class="empty-state"><div class="spinner"></div></div></div>
@@ -194,21 +228,86 @@ const OPCIONES = {
   patron: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Sentadilla (rodilla dom.)','Bisagra (cadera dom.)','Zancada','Rotación','Anti-rotación','Locomoción','Isométrico'],
   materiales: ['Peso corporal','Barra','Barra olímpica','Mancuernas','Kettlebell','Polea','Gomas','Banda corta','Anillas','TRX','Paralelas','Cajón','Balón medicinal','Balón suizo','Landmine','Battle rope','Trineo','Cuerda','Suelo','Ninguno'],
   entorno: ['Clase','Rack','Ambos'],
-  disciplina: ['Calistenia','Funcional','Gym','Movilidad','Cardio']
+  disciplina: ['Calistenia','Funcional','Gym','Movilidad','Cardio','Tábata']
 };
 let API_URL = localStorage.getItem('bateria_api') || '';
 let ejercicios = [];
 let editId = null;
 let filters = { video: 'all', estado: 'all' };
+// Filtros por categoría: cada uno es un Set de valores seleccionados
+let catFilters = { grupo: new Set(), patron: new Set(), materiales: new Set(), entorno: new Set(), disciplina: new Set() };
 
 function init(){
   renderChipsInModal();
+  renderCatFilterChips();
   if(!API_URL){
     document.getElementById('config-warning').style.display = 'block';
     document.getElementById('list').innerHTML = '<div class="empty-state"><div class="icon">⚙</div><h3>Sin configurar</h3><p>Configura la conexión con Google Sheets pulsando ⚙</p></div>';
     return;
   }
   loadData();
+}
+
+function renderCatFilterChips(){
+  Object.keys(OPCIONES).forEach(key => {
+    const container = document.getElementById('catfilter-chips-' + key);
+    if(!container) return;
+    container.innerHTML = OPCIONES[key].map(opt =>
+      '<button type="button" class="multi-chip" data-cfkey="'+key+'" data-val="'+opt+'" onclick="toggleCatFilterChip(this)">'+opt+'</button>'
+    ).join('');
+  });
+}
+
+function toggleCatFilterChip(btn){
+  const key = btn.dataset.cfkey;
+  const val = btn.dataset.val;
+  if(catFilters[key].has(val)){
+    catFilters[key].delete(val);
+    btn.classList.remove('cf-active');
+  } else {
+    catFilters[key].add(val);
+    btn.classList.add('cf-active');
+  }
+  updateCatFilterUI();
+  renderList();
+}
+
+function toggleCatFilters(){
+  const panel = document.getElementById('cat-filters-panel');
+  const btn = document.getElementById('btn-toggle-catfilters');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '▾ Filtros por categoría' : '▴ Ocultar filtros';
+}
+
+function clearCatFilters(){
+  Object.keys(catFilters).forEach(k => catFilters[k].clear());
+  document.querySelectorAll('.multi-chip.cf-active').forEach(c => c.classList.remove('cf-active'));
+  updateCatFilterUI();
+  renderList();
+}
+
+function updateCatFilterUI(){
+  // Contar total de filtros activos y mostrar/ocultar botón limpiar + badge en el botón toggle
+  let total = 0;
+  Object.keys(catFilters).forEach(k => { total += catFilters[k].size; });
+  const btnClear = document.getElementById('btn-clear-catfilters');
+  const btnToggle = document.getElementById('btn-toggle-catfilters');
+  if(total > 0){
+    btnClear.style.display = '';
+    btnClear.textContent = '✕ Limpiar ('+total+')';
+    // Añadir badge al botón toggle
+    if(!btnToggle.textContent.includes('activos')){
+      const panel = document.getElementById('cat-filters-panel');
+      const isOpen = panel.style.display !== 'none';
+      btnToggle.textContent = (isOpen ? '▴ Ocultar filtros' : '▾ Filtros por categoría') + ' · ' + total + ' activos';
+    }
+  } else {
+    btnClear.style.display = 'none';
+    const panel = document.getElementById('cat-filters-panel');
+    const isOpen = panel.style.display !== 'none';
+    btnToggle.textContent = isOpen ? '▴ Ocultar filtros' : '▾ Filtros por categoría';
+  }
 }
 
 function renderChipsInModal(){
@@ -274,6 +373,21 @@ function renderList(){
     }
     if(filters.estado === 'vacio' && (e.grupo_muscular || e.patron || e.materiales)) return false;
     if(filters.estado === 'completo' && !(e.grupo_muscular && e.patron && e.materiales && e.entorno && e.disciplina)) return false;
+
+    // Filtros por categoría: AND entre categorías, OR dentro de cada una
+    // Ejemplo: {grupo:{Pecho}, materiales:{Anillas,TRX}} → ejercicio debe tener "Pecho" en grupo Y (Anillas O TRX) en materiales
+    const catFieldMap = {grupo:'grupo_muscular', patron:'patron', materiales:'materiales', entorno:'entorno', disciplina:'disciplina'};
+    for(const key in catFilters){
+      const selectedSet = catFilters[key];
+      if(selectedSet.size === 0) continue; // categoría sin filtros → no restringe
+      const exVals = (e[catFieldMap[key]]||'').split(',').map(v => v.trim()).filter(Boolean);
+      // ¿Al menos uno de los seleccionados está en los valores del ejercicio?
+      let hasMatch = false;
+      for(const sel of selectedSet){
+        if(exVals.includes(sel)){ hasMatch = true; break; }
+      }
+      if(!hasMatch) return false;
+    }
     return true;
   });
 
