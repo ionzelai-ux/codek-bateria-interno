@@ -78,7 +78,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .empty-state h3{font-family:var(--bebas);font-size:26px;letter-spacing:2px;color:var(--cream);margin-bottom:8px}
 .spinner{width:36px;height:36px;border:3px solid var(--gl);border-top-color:var(--granate);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
-.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 20px;background:var(--gd);border-bottom:1px solid var(--gl)}
+.stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 20px;background:var(--gd);border-bottom:1px solid var(--gl)}
 .stat-box{background:var(--black);border-radius:8px;padding:8px 10px;text-align:center}
 .stat-val{font-family:var(--bebas);font-size:22px;color:var(--granate);line-height:1}
 .stat-lbl{font-size:9px;color:var(--gt);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
@@ -96,6 +96,12 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .tabata-btn.on{background:rgba(232,160,32,.2);border-color:var(--yellow);color:var(--yellow)}
 .tabata-btn:active{transform:scale(.94)}
 .tabata-btn.saving{opacity:.5;pointer-events:none}
+.ex-row.pend{border-left:4px solid var(--yellow)}
+.tag-pend{background:var(--yellow);color:#000;font-weight:800}
+.pend-btn{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;border:1.5px solid var(--green);background:rgba(58,173,110,.15);color:var(--green);transition:all .15s;flex-shrink:0;font-family:'Barlow Condensed',sans-serif}
+.pend-btn:hover{background:var(--green);color:#fff}
+.pend-btn:active{transform:scale(.94)}
+.pend-btn.saving{opacity:.5;pointer-events:none}
 </style>
 </head>
 <body>
@@ -115,6 +121,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
   <div class="stat-box"><div class="stat-val" id="stat-video-yes">0</div><div class="stat-lbl">Con vídeo</div></div>
   <div class="stat-box"><div class="stat-val" id="stat-video-no">0</div><div class="stat-lbl">Sin vídeo</div></div>
   <div class="stat-box"><div class="stat-val" id="stat-completos">0</div><div class="stat-lbl">Completos</div></div>
+  <div class="stat-box"><div class="stat-val" id="stat-pend" style="color:var(--yellow)">0</div><div class="stat-lbl">Por revisar</div></div>
 </div>
 <div class="toolbar">
   <input class="search-input" id="search" placeholder="🔍 Buscar ejercicio..." oninput="renderList()">
@@ -132,6 +139,11 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
     <button class="chip mini active" data-filter="estado" data-val="all" onclick="setFilter('estado','all',this)">Todos</button>
     <button class="chip mini" data-filter="estado" data-val="vacio" onclick="setFilter('estado','vacio',this)">Sin categorizar</button>
     <button class="chip mini" data-filter="estado" data-val="completo" onclick="setFilter('estado','completo',this)">Completos</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-lbl">Revisión:</span>
+    <button class="chip mini active" data-filter="revision" data-val="all" onclick="setFilter('revision','all',this)">Todos</button>
+    <button class="chip mini" data-filter="revision" data-val="pend" onclick="setFilter('revision','pend',this)">Pendientes <span id="pend-count-chip"></span></button>
   </div>
   <button class="btn btn-secondary btn-sm" id="btn-toggle-catfilters" onclick="toggleCatFilters()" style="margin-left:auto">▾ Filtros por categoría</button>
   <button class="btn btn-danger btn-sm" id="btn-clear-catfilters" onclick="clearCatFilters()" style="display:none">✕ Limpiar</button>
@@ -233,12 +245,14 @@ const OPCIONES = {
   patron: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Sentadilla (rodilla dom.)','Bisagra (cadera dom.)','Zancada','Rotación','Anti-rotación','Locomoción','Isométrico'],
   materiales: ['Peso corporal','Barra','Barra olímpica','Mancuernas','Kettlebell','Polea','Gomas','Banda corta','Anillas','TRX','Paralelas','Cajón','Balón medicinal','Balón suizo','Landmine','Battle rope','Trineo','Cuerda','Suelo','Ninguno'],
   entorno: ['Clase','Rack','Ambos'],
-  disciplina: ['Calistenia','Funcional','Gym','Movilidad','Cardio','Tábata']
+  disciplina: ['Calistenia','Funcional','Gym','Movilidad','Cardio','Tábata','Pendiente revisar']
 };
+const TAG_PEND = 'Pendiente revisar';  // marca guardada en Disciplina (igual que Tábata)
+const isPend = e => (e.disciplina||'').split(',').map(v => v.trim()).includes(TAG_PEND);
 let API_URL = localStorage.getItem('bateria_api') || '';
 let ejercicios = [];
 let editId = null;
-let filters = { video: 'all', estado: 'all' };
+let filters = { video: 'all', estado: 'all', revision: 'all' };
 // Filtros por categoría: cada uno es un Set de valores seleccionados
 let catFilters = { grupo: new Set(), patron: new Set(), materiales: new Set(), entorno: new Set(), disciplina: new Set() };
 
@@ -367,6 +381,9 @@ function renderList(){
   document.getElementById('stat-video-yes').textContent = conVideo;
   document.getElementById('stat-video-no').textContent = sinVideo;
   document.getElementById('stat-completos').textContent = completos;
+  const pendientes = ejercicios.filter(isPend).length;
+  document.getElementById('stat-pend').textContent = pendientes;
+  document.getElementById('pend-count-chip').textContent = pendientes ? '('+pendientes+')' : '';
   document.getElementById('count-badge').textContent = total;
 
   let filtered = ejercicios.filter(e => {
@@ -376,6 +393,7 @@ function renderList(){
       if(filters.video === 'SI' && vh !== 'SI') return false;
       if(filters.video === 'NO' && vh === 'SI') return false;
     }
+    if(filters.revision === 'pend' && !isPend(e)) return false;
     if(filters.estado === 'vacio' && (e.grupo_muscular || e.patron || e.materiales)) return false;
     if(filters.estado === 'completo' && !(e.grupo_muscular && e.patron && e.materiales && e.entorno && e.disciplina)) return false;
 
@@ -415,7 +433,7 @@ function rowHtml(e){
   const patrones = (e.patron||'').split(',').filter(Boolean).map(p => '<span class="meta-tag tag-patron">'+p.trim()+'</span>').join('');
   const mats = (e.materiales||'').split(',').filter(Boolean).map(m => '<span class="meta-tag tag-material">'+m.trim()+'</span>').join('');
   const ents = (e.entorno||'').split(',').filter(Boolean).map(x => '<span class="meta-tag tag-entorno">'+x.trim()+'</span>').join('');
-  const discs = (e.disciplina||'').split(',').filter(Boolean).map(x => '<span class="meta-tag tag-disc">'+x.trim()+'</span>').join('');
+  const discs = (e.disciplina||'').split(',').filter(Boolean).map(x => '<span class="meta-tag '+(x.trim()===TAG_PEND?'tag-pend':'tag-disc')+'">'+x.trim()+'</span>').join('');
   const hasAny = grupos || patrones || mats || ents || discs;
   const metaHtml = hasAny ? grupos+patrones+mats+ents+discs : '<span class="ex-empty-meta">Sin categorizar — pulsa para completar</span>';
   const vh = (e.video_hecho||'').toUpperCase() === 'SI';
@@ -424,25 +442,31 @@ function rowHtml(e){
   const discVals = (e.disciplina||'').split(',').map(v => v.trim()).filter(Boolean);
   const isTabata = discVals.includes('Tábata');
   const tabataBtn = '<button class="tabata-btn'+(isTabata?' on':'')+'" data-exid="'+e.id+'" onclick="toggleTabataQuick(event,\''+e.id+'\')" title="Marcar/desmarcar como Tábata">⚡ Tábata</button>';
-  return '<div class="ex-row" onclick="editEx(\''+e.id+'\')">'
+  const pend = isPend(e);
+  const pendBtn = pend ? '<button class="pend-btn" onclick="toggleDiscTag(event,\''+e.id+'\',TAG_PEND,\'\',\'✓ Revisado\')" title="Quitar la marca de pendiente de revisar">✓ Revisado</button>' : '';
+  return '<div class="ex-row'+(pend?' pend':'')+'" onclick="editEx(\''+e.id+'\')">'
     +'<div class="ex-main"><div class="ex-name">'+escapeHtml(e.nombre)+'</div>'
     +'<div class="ex-meta">'+metaHtml+'</div></div>'
-    +tabataBtn+vs+'</div>';
+    +pendBtn+tabataBtn+vs+'</div>';
 }
 
-async function toggleTabataQuick(evt, id){
+function toggleTabataQuick(evt, id){
+  return toggleDiscTag(evt, id, 'Tábata', '⚡ Marcado como Tábata', '⚡ Tábata quitado');
+}
+// Añade/quita una etiqueta dentro de Disciplina (Tábata, Pendiente revisar) sin abrir el modal
+async function toggleDiscTag(evt, id, tag, msgOn, msgOff){
   evt.stopPropagation();  // no abrir el modal de edición
   const e = ejercicios.find(x => x.id === id);
   if(!e) return;
   const btn = evt.currentTarget;
   if(btn.classList.contains('saving')) return;
   const discVals = (e.disciplina||'').split(',').map(v => v.trim()).filter(Boolean);
-  const hasTabata = discVals.includes('Tábata');
+  const hasTag = discVals.includes(tag);
   let newVals;
-  if(hasTabata){
-    newVals = discVals.filter(v => v !== 'Tábata');
+  if(hasTag){
+    newVals = discVals.filter(v => v !== tag);
   } else {
-    newVals = discVals.concat(['Tábata']);
+    newVals = discVals.concat([tag]);
   }
   const newDisciplina = newVals.join(', ');
   // Update UI optimista
@@ -470,7 +494,7 @@ async function toggleTabataQuick(evt, id){
       btn.classList.toggle('on');
       showToast('Error: '+res.error,'error');
     } else {
-      showToast(hasTabata ? '⚡ Tábata quitado' : '⚡ Marcado como Tábata','success');
+      showToast(hasTag ? msgOff : msgOn,'success');
       renderList();  // refrescar tags visibles
     }
   } catch(err){
