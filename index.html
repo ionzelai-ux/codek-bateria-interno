@@ -250,7 +250,15 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
       <div class="toggle-lbl">🎥 Vídeo grabado</div>
       <div class="toggle" id="toggle-video" onclick="toggleVideo()"></div></div></div>
     <div class="form-group"><label class="form-label">URL del vídeo</label>
-      <input class="form-input" id="ex-videourl" placeholder="https://..."></div>
+      <input class="form-input" id="ex-videourl" placeholder="https://...">
+      <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          🎥 Subir vídeo desde el móvil
+          <input type="file" id="ex-video-file" accept="video/*" capture="environment" style="display:none" onchange="uploadVideo(this)">
+        </label>
+        <span id="video-upload-status" style="font-size:12px;color:var(--gt)"></span>
+      </div>
+    </div>
     <div class="form-group"><label class="form-label">Notas</label>
       <textarea class="form-textarea" id="ex-notas" placeholder="Observaciones, tips..."></textarea></div>
     <div class="form-actions">
@@ -391,6 +399,51 @@ function renderChipsInModal(){
 }
 function toggleChip(btn){ btn.classList.toggle('sel'); }
 function toggleVideo(){ document.getElementById('toggle-video').classList.toggle('on'); }
+
+// ── Subida de vídeos a Supabase Storage (mismo proyecto que app-entrenamientos) ──
+const VIDEO_SB_URL = 'https://ronwprkclwaahlddowfe.supabase.co';
+const VIDEO_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvbndwcmtjbHdhYWhsZGRvd2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzAyNjQsImV4cCI6MjA5NjQwNjI2NH0.1zYoUpT3JChq3h3Ko-1SrI8CIOMS2i4I2sKfzaRr7sc';
+const VIDEO_BUCKET = 'ejercicios-videos';
+const VIDEO_MAX_MB = 20;
+
+function slugify(s){
+  return (s||'video').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'video';
+}
+
+async function uploadVideo(input){
+  const file = input.files && input.files[0];
+  const status = document.getElementById('video-upload-status');
+  if(!file) return;
+  if(!file.type.startsWith('video/')){ showToast('Elige un archivo de vídeo','error'); input.value=''; return; }
+  if(file.size > VIDEO_MAX_MB*1024*1024){ showToast('Vídeo demasiado grande (máx '+VIDEO_MAX_MB+'MB)','error'); input.value=''; return; }
+  const nombre = document.getElementById('ex-nombre').value.trim();
+  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+  const path = slugify(nombre) + '-' + Date.now() + '.' + ext;
+  status.textContent = 'Subiendo…';
+  input.disabled = true;
+  try {
+    const r = await fetch(VIDEO_SB_URL + '/storage/v1/object/' + VIDEO_BUCKET + '/' + path, {
+      method: 'POST',
+      headers: { 'apikey': VIDEO_SB_KEY, 'Authorization': 'Bearer '+VIDEO_SB_KEY, 'Content-Type': file.type },
+      body: file
+    });
+    if(!r.ok){ throw new Error(await r.text()); }
+    const publicUrl = VIDEO_SB_URL + '/storage/v1/object/public/' + VIDEO_BUCKET + '/' + path;
+    document.getElementById('ex-videourl').value = publicUrl;
+    document.getElementById('toggle-video').classList.add('on');
+    status.textContent = '✅ Subido. Pulsa Guardar para confirmar.';
+    showToast('🎥 Vídeo subido','success');
+  } catch(err){
+    console.error(err);
+    status.textContent = '';
+    showToast('Error al subir el vídeo (¿existe el bucket "'+VIDEO_BUCKET+'"?)','error');
+  } finally {
+    input.disabled = false;
+    input.value = '';
+  }
+}
 
 async function apiGet(action){
   const url = API_URL + (API_URL.includes('?')?'&':'?') + 'action=' + action;
@@ -668,6 +721,7 @@ function openNewEx(){
   document.getElementById('ex-videourl').value = '';
   document.getElementById('ex-notas').value = '';
   document.getElementById('toggle-video').classList.remove('on');
+  document.getElementById('video-upload-status').textContent = '';
   document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
   document.getElementById('btn-delete').style.display = 'none';
   openModal('modal-ex');
@@ -683,6 +737,7 @@ function editEx(id){
   document.getElementById('ex-notas').value = e.notas || '';
   const vh = (e.video_hecho||'').toUpperCase() === 'SI';
   document.getElementById('toggle-video').classList.toggle('on', vh);
+  document.getElementById('video-upload-status').textContent = '';
   document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
   const fieldMap = {grupo:'grupo_muscular', patron:'patron', materiales:'materiales', entorno:'entorno', disciplina:'disciplina'};
   Object.keys(fieldMap).forEach(key => {
