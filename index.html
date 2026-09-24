@@ -571,8 +571,9 @@ function bloqueSectionHtml(titulo, bloque){
     +'<ul class="bloque-ex-list">'+items+'</ul></div>';
 }
 
+function quitarTildes(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function renderList(){
-  const search = document.getElementById('search').value.toLowerCase().trim();
+  const search = quitarTildes(document.getElementById('search').value.toLowerCase().trim());
   const list = document.getElementById('list');
   const total = ejercicios.length;
   const conVideo = ejercicios.filter(e => (e.video_hecho||'').toUpperCase() === 'SI').length;
@@ -588,7 +589,7 @@ function renderList(){
   document.getElementById('count-badge').textContent = total;
 
   let filtered = ejercicios.filter(e => {
-    if(search && !e.nombre.toLowerCase().includes(search)) return false;
+    if(search && !quitarTildes(e.nombre.toLowerCase()).includes(search)) return false;
     if(filters.video !== 'all'){
       const vh = (e.video_hecho||'').toUpperCase();
       if(filters.video === 'SI' && vh !== 'SI') return false;
