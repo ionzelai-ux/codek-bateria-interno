@@ -404,7 +404,7 @@ function toggleVideo(){ document.getElementById('toggle-video').classList.toggle
 const VIDEO_SB_URL = 'https://ronwprkclwaahlddowfe.supabase.co';
 const VIDEO_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvbndwcmtjbHdhYWhsZGRvd2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzAyNjQsImV4cCI6MjA5NjQwNjI2NH0.1zYoUpT3JChq3h3Ko-1SrI8CIOMS2i4I2sKfzaRr7sc';
 const VIDEO_BUCKET = 'ejercicios-videos';
-const VIDEO_MAX_MB = 20;
+const VIDEO_MAX_MB = 45; // el bucket admite hasta ~40-80MB por archivo, comprobado a mano
 
 function slugify(s){
   return (s||'video').toLowerCase()
@@ -416,8 +416,20 @@ async function uploadVideo(input){
   const file = input.files && input.files[0];
   const status = document.getElementById('video-upload-status');
   if(!file) return;
-  if(!file.type.startsWith('video/')){ showToast('Elige un archivo de vídeo','error'); input.value=''; return; }
-  if(file.size > VIDEO_MAX_MB*1024*1024){ showToast('Vídeo demasiado grande (máx '+VIDEO_MAX_MB+'MB)','error'); input.value=''; return; }
+  if(!file.type.startsWith('video/')){
+    showToast('Elige un archivo de vídeo','error');
+    status.style.color = 'var(--red)';
+    status.textContent = 'Ese archivo no es un vídeo';
+    input.value=''; return;
+  }
+  if(file.size > VIDEO_MAX_MB*1024*1024){
+    const mb = (file.size/1024/1024).toFixed(1);
+    showToast('Vídeo demasiado grande (máx '+VIDEO_MAX_MB+'MB)','error');
+    status.style.color = 'var(--red)';
+    status.textContent = '❌ El vídeo pesa '+mb+'MB, el máximo es '+VIDEO_MAX_MB+'MB. Prueba a grabarlo más corto o con menos calidad.';
+    input.value=''; return;
+  }
+  status.style.color = '';
   const nombre = document.getElementById('ex-nombre').value.trim();
   const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
   const path = slugify(nombre) + '-' + Date.now() + '.' + ext;
@@ -751,6 +763,7 @@ function openNewEx(){
   document.getElementById('ex-nombre').value = '';
   document.getElementById('ex-videourl').value = '';
   document.getElementById('ex-notas').value = '';
+  document.getElementById('video-upload-status').style.color = '';
   document.getElementById('toggle-video').classList.remove('on');
   document.getElementById('video-upload-status').textContent = '';
   document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
@@ -769,6 +782,7 @@ function editEx(id){
   const vh = (e.video_hecho||'').toUpperCase() === 'SI';
   document.getElementById('toggle-video').classList.toggle('on', vh);
   document.getElementById('video-upload-status').textContent = '';
+  document.getElementById('video-upload-status').style.color = '';
   document.querySelectorAll('.multi-chip').forEach(c => c.classList.remove('sel'));
   const fieldMap = {grupo:'grupo_muscular', patron:'patron', materiales:'materiales', entorno:'entorno', disciplina:'disciplina'};
   Object.keys(fieldMap).forEach(key => {
