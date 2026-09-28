@@ -433,8 +433,20 @@ async function uploadVideo(input){
     const publicUrl = VIDEO_SB_URL + '/storage/v1/object/public/' + VIDEO_BUCKET + '/' + path;
     document.getElementById('ex-videourl').value = publicUrl;
     document.getElementById('toggle-video').classList.add('on');
-    status.textContent = '✅ Subido. Pulsa Guardar para confirmar.';
-    showToast('🎥 Vídeo subido','success');
+    if(editId){
+      // El ejercicio ya existe: se guarda solo, sin depender de que se pulse "Guardar" aparte
+      const guardado = await autoSaveVideo();
+      if(guardado){
+        status.textContent = '✅ Vídeo subido y guardado en el ejercicio';
+        showToast('🎥 Vídeo guardado','success');
+      } else {
+        status.textContent = '✅ Subido, pero no se guardó solo. Pulsa Guardar.';
+        showToast('Vídeo subido: pulsa Guardar para confirmarlo','error');
+      }
+    } else {
+      status.textContent = '✅ Subido. Pulsa Guardar para crear el ejercicio.';
+      showToast('🎥 Vídeo subido','success');
+    }
   } catch(err){
     console.error(err);
     status.textContent = '';
@@ -442,6 +454,24 @@ async function uploadVideo(input){
   } finally {
     input.disabled = false;
     input.value = '';
+  }
+}
+
+// Al subir un vídeo sobre un ejercicio que ya existe, se guarda directamente
+// (sin depender de que además se pulse "Guardar"), reusando los mismos datos
+// del formulario. Si falla, se deja tal cual para que el botón Guardar lo cubra.
+async function autoSaveVideo(){
+  if(!editId) return false;
+  const data = gatherExFormData();
+  data.id = editId;
+  try {
+    const res = await apiPost('update', {data});
+    if(res.error) return false;
+    const idx = ejercicios.findIndex(e => e.id === editId);
+    if(idx !== -1){ ejercicios[idx] = {...ejercicios[idx], ...data}; renderList(); }
+    return true;
+  } catch(e){
+    return false;
   }
 }
 
@@ -752,12 +782,10 @@ function editEx(id){
   openModal('modal-ex');
 }
 
-async function saveEx(){
-  const nombre = document.getElementById('ex-nombre').value.trim();
-  if(!nombre){ showToast('El nombre es obligatorio','error'); return; }
+function gatherExFormData(){
   const getChipVals = key => Array.from(document.querySelectorAll('.multi-chip[data-key="'+key+'"].sel')).map(c => c.dataset.val).join(', ');
-  const data = {
-    nombre,
+  return {
+    nombre: document.getElementById('ex-nombre').value.trim(),
     grupo_muscular: getChipVals('grupo'),
     patron: getChipVals('patron'),
     materiales: getChipVals('materiales'),
@@ -767,6 +795,11 @@ async function saveEx(){
     video_url: document.getElementById('ex-videourl').value.trim(),
     notas: document.getElementById('ex-notas').value.trim()
   };
+}
+
+async function saveEx(){
+  const data = gatherExFormData();
+  if(!data.nombre){ showToast('El nombre es obligatorio','error'); return; }
   if(editId) data.id = editId;
   const btn = document.getElementById('btn-save');
   btn.textContent = 'Guardando...'; btn.disabled = true;
