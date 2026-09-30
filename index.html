@@ -496,6 +496,16 @@ async function uploadVideo(input){
   const file = input.files && input.files[0];
   const status = document.getElementById('video-upload-status');
   if(!file) return;
+  // Caso real visto con un Samsung: el selector de archivos entrega un File
+  // de 0 bytes, sin nombre con extensión ni tipo (el vídeo está en la nube
+  // de Samsung/Google Photos y el móvil no lo ha descargado en local todavía).
+  // No es un problema de qué tipo de archivo es -- no hay archivo que subir.
+  if(file.size === 0){
+    showToast('El archivo está vacío','error');
+    status.style.color = 'var(--red)';
+    status.textContent = '❌ "'+file.name+'" pesa 0KB (está vacío). Suele pasar cuando el vídeo está en la nube (Samsung Cloud / Google Fotos) y el teléfono no lo tiene descargado. Ábrelo primero en la app de Galería para descargarlo del todo, y luego inténtalo de nuevo aquí.';
+    input.value=''; return;
+  }
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   const extEsVideo = !!VIDEO_EXT_MIME[ext];
   const tipoDeclaraVideo = file.type.startsWith('video/');
