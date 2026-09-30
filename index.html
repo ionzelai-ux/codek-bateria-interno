@@ -10,6 +10,7 @@
   --granate:#97272E;--granate-d:#6e1b21;
   --black:#0d0d0d;--gd:#1a1a1a;--gm:#242424;--gl:#333;
   --gt:#888;--cream:#F8F1E3;--green:#3aad6e;--yellow:#e8a020;--red:#d03030;
+  --azul:#3a7cd0;
   --bebas:'Bebas Neue',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -121,6 +122,37 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .pend-btn:hover{background:var(--green);color:#fff}
 .pend-btn:active{transform:scale(.94)}
 .pend-btn.saving{opacity:.5;pointer-events:none}
+
+/* ── Calendario mensual ── */
+.cal-toolbar{padding:14px 20px;background:var(--gd);border-bottom:1px solid var(--gl);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cal-nav{display:flex;align-items:center;gap:10px}
+.cal-nav-btn{background:var(--gm);border:1px solid var(--gl);color:var(--cream);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1}
+.cal-nav-btn:hover{border-color:var(--granate)}
+.cal-mes-titulo{font-family:var(--bebas);font-size:22px;letter-spacing:1px;min-width:180px;text-align:center}
+.cal-actions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.cal-legend{display:flex;gap:16px;padding:10px 20px;font-size:11px;color:var(--gt);flex-wrap:wrap}
+.cal-legend span{display:inline-flex;align-items:center;gap:5px}
+.cal-dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+.cal-dot.func{background:var(--azul)} .cal-dot.cal{background:var(--green)} .cal-dot.desc{background:var(--gl)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:0 20px 20px}
+.cal-dow{font-size:10px;letter-spacing:.5px;color:var(--gt);text-transform:uppercase;text-align:center;padding-bottom:2px}
+.cal-cell{background:var(--gd);border:1px solid var(--gl);border-radius:8px;min-height:78px;padding:6px;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.cal-cell:hover{border-color:var(--granate)}
+.cal-cell.empty{background:transparent;border-color:transparent;cursor:default}
+.cal-cell.closed{background:rgba(255,255,255,.02);cursor:default}
+.cal-num{font-size:12px;font-weight:700}
+.cal-cell.closed .cal-num{color:var(--gt)}
+.cal-tag{font-size:9px;font-weight:700;letter-spacing:.2px;text-transform:uppercase;padding:2px 5px;border-radius:4px;line-height:1.3}
+.cal-tag.func{background:rgba(58,124,208,.18);color:var(--azul);border:1px solid rgba(58,124,208,.4)}
+.cal-tag.cal{background:rgba(58,173,110,.18);color:var(--green);border:1px solid rgba(58,173,110,.4)}
+@media (max-width:640px){
+  .cal-grid{gap:4px;padding:0 10px 16px}
+  .cal-cell{min-height:64px;padding:4px}
+  .cal-tag{font-size:8px}
+}
+.cal-tipo-btn{display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:8px;border-radius:8px;border:1.5px solid var(--gl);background:var(--gm);color:var(--cream);cursor:pointer;font-family:'Barlow',sans-serif;font-size:14px}
+.cal-tipo-btn:hover{border-color:var(--azul)}
+.cal-tipo-btn .sub{color:var(--gt);font-size:12px;margin-left:6px}
 </style>
 </head>
 <body>
@@ -138,6 +170,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 <div class="tabbar">
   <button class="tab-btn active" id="tab-btn-bateria" onclick="switchTab('bateria')">Batería</button>
   <button class="tab-btn" id="tab-btn-clases" onclick="switchTab('clases')">Clases planificadas</button>
+  <button class="tab-btn" id="tab-btn-calendario" onclick="switchTab('calendario')">Calendario</button>
 </div>
 <div id="view-bateria">
 <div class="stats-bar">
@@ -213,6 +246,41 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
     <button class="chip mini" data-cpatron="Pierna" onclick="setClasePatronFilter('Pierna',this)">Pierna</button>
   </div>
   <div id="clase-grid"><div class="empty-state"><div class="spinner"></div></div></div>
+</div>
+
+<div id="view-calendario" style="display:none">
+  <div class="cal-toolbar">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="navCalendario(-1)">◀</button>
+      <div class="cal-mes-titulo" id="cal-mes-titulo">—</div>
+      <button class="cal-nav-btn" onclick="navCalendario(1)">▶</button>
+    </div>
+    <div class="cal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="generarMesAuto()">🔀 Generar mes automático</button>
+      <button class="btn btn-primary btn-sm" onclick="descargarImagenCalendario()">📸 Foto para WhatsApp</button>
+    </div>
+  </div>
+  <div class="cal-legend">
+    <span><i class="cal-dot func"></i> Funcional</span>
+    <span><i class="cal-dot cal"></i> Calistenia</span>
+    <span><i class="cal-dot desc"></i> Descanso / domingo</span>
+    <span style="margin-left:auto;color:var(--gt)">Toca un día para asignar o cambiar el entrenamiento</span>
+  </div>
+  <div class="cal-grid" id="cal-grid"><div class="empty-state"><div class="spinner"></div></div></div>
+</div>
+
+<div class="modal-overlay" id="modal-cal-dia">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="cal-dia-titulo">Día</div>
+      <button class="modal-close" onclick="closeModal('modal-cal-dia')">✕</button>
+    </div>
+    <div id="cal-dia-opciones"></div>
+    <div class="form-actions">
+      <button class="btn btn-danger" onclick="setDiaCalendario(null)">🗑 Vaciar día</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-cal-dia')">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-clase">
@@ -524,9 +592,12 @@ let claseFiltroPatron = 'all';
 function switchTab(tab){
   document.getElementById('tab-btn-bateria').classList.toggle('active', tab==='bateria');
   document.getElementById('tab-btn-clases').classList.toggle('active', tab==='clases');
+  document.getElementById('tab-btn-calendario').classList.toggle('active', tab==='calendario');
   document.getElementById('view-bateria').style.display = tab==='bateria' ? '' : 'none';
   document.getElementById('view-clases').style.display = tab==='clases' ? '' : 'none';
+  document.getElementById('view-calendario').style.display = tab==='calendario' ? '' : 'none';
   if(tab==='clases' && !clasesLoaded) loadClases();
+  if(tab==='calendario' && !calendarioLoaded) loadCalendario();
 }
 
 async function loadClases(){
@@ -611,6 +682,340 @@ function bloqueSectionHtml(titulo, bloque){
   return '<div class="bloque-section"><div class="bloque-title">'+escapeHtml(titulo)+'</div>'
     +(bloque.formato ? '<div class="bloque-formato">'+escapeHtml(bloque.formato)+'</div>' : '')
     +'<ul class="bloque-ex-list">'+items+'</ul></div>';
+}
+
+// ═══════════════════════════════════════════
+// Pestaña "Calendario" — entrenamiento del mes por día
+// ═══════════════════════════════════════════
+const CAL_CATS = ['TV','TH','EH','EV','P','R'];
+const CAL_FAMILY = {TV:'TRAC', TH:'TRAC', EH:'EMP', EV:'EMP', P:'PIER', R:'RES'};
+const CAL_LABEL = {
+  TV:['Tracción Vertical','Dominada/MU'], TH:['Tracción Horizontal','Front Lever'],
+  EH:['Empuje Horizontal','Plancha'], EV:['Empuje Vertical','Pino'],
+  P:['Pierna','Pistol'], R:['Resistencia', null]
+};
+let calendarioMap = {};       // fecha ISO -> tipo (TV/TH/EH/EV/P/R)
+let calendarioLoaded = false;
+let calMesActual = (function(){ const d=new Date(); d.setDate(1); return d; })();
+
+function calFamilyClash(a,b){
+  const fa=CAL_FAMILY[a], fb=CAL_FAMILY[b];
+  if(fa===fb) return true;
+  if((fa==='PIER'&&fb==='RES')||(fa==='RES'&&fb==='PIER')) return true;
+  return false;
+}
+function calPermutations(arr){
+  if(arr.length<=1) return [arr];
+  const res=[];
+  for(let i=0;i<arr.length;i++){
+    const rest=[...arr.slice(0,i),...arr.slice(i+1)];
+    for(const p of calPermutations(rest)) res.push([arr[i],...p]);
+  }
+  return res;
+}
+function calIsoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function calDiasHabilesDelMes(year, monthIdx){
+  const dias = [];
+  const last = new Date(year, monthIdx+1, 0).getDate();
+  for(let d=1; d<=last; d++){
+    const dt = new Date(year, monthIdx, d);
+    const dow = dt.getDay();
+    if(dow===0) continue;
+    dias.push({fecha:calIsoDate(dt), col: dow-1}); // lun=0 ... sab=5
+  }
+  return dias;
+}
+function calLunesDeLaSemana(fechaISO){
+  const [y,m,d] = fechaISO.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const dow = dt.getDay();
+  const offset = dow===0 ? 6 : dow-1;
+  dt.setDate(dt.getDate() - offset);
+  return calIsoDate(dt);
+}
+
+// Backtracking real: cada semana Lun-Sáb debe usar los 6 tipos sin repetir;
+// si una semana se queda sin salida se deshacen semanas anteriores y se
+// prueba otra combinación, en vez de fallar (probado con 39 meses seguidos
+// + 20 repeticiones antes de subir esto a producción).
+function generarMesCalendario(year, monthIdx, mapaHistorico){
+  const dias = calDiasHabilesDelMes(year, monthIdx);
+  if(!dias.length) return {};
+  const semanasMap = new Map();
+  dias.forEach(d => {
+    const key = calLunesDeLaSemana(d.fecha);
+    if(!semanasMap.has(key)) semanasMap.set(key, []);
+    semanasMap.get(key).push(d);
+  });
+  const semanas = [...semanasMap.entries()].sort((a,b)=> a[0]<b[0]?-1:1);
+
+  function ultimoTipoAntesDe(fechaISO){
+    let mejor = null;
+    Object.keys(mapaHistorico).forEach(f => {
+      if(f < fechaISO && mapaHistorico[f] && (!mejor || f > mejor)) mejor = f;
+    });
+    return mejor ? mapaHistorico[mejor] : null;
+  }
+  const lastCatInicial = ultimoTipoAntesDe(dias[0].fecha);
+
+  function candidatosPara(diasSemana, lunKey){
+    const usadosEstaSemana = new Set();
+    for(let i=0;i<6;i++){
+      const [y,m,d] = lunKey.split('-').map(Number);
+      const dt = new Date(y, m-1, d+i);
+      const f = calIsoDate(dt);
+      const pertenece = dt.getFullYear()===year && dt.getMonth()===monthIdx;
+      if(!pertenece && mapaHistorico[f]) usadosEstaSemana.add(mapaHistorico[f]);
+    }
+    const disponibles = CAL_CATS.filter(c => !usadosEstaSemana.has(c));
+    const listas = [];
+    if(diasSemana.length < 6 && usadosEstaSemana.size > 0 && diasSemana.length === disponibles.length){
+      listas.push(calPermutations(disponibles).map(p => p.slice(0, diasSemana.length)).sort(()=>Math.random()-0.5));
+    }
+    listas.push(calPermutations(CAL_CATS).map(p => p.slice(0, diasSemana.length)).sort(()=>Math.random()-0.5));
+    return listas.flat();
+  }
+
+  const semanasInfo = semanas.map(([lunKey, diasSemana]) => ({diasSemana, candidatos: candidatosPara(diasSemana, lunKey)}));
+  const colUsado = [new Set(),new Set(),new Set(),new Set(),new Set(),new Set()];
+  const resultado = {};
+
+  function backtrack(idx, lastCat){
+    if(idx === semanasInfo.length) return true;
+    const {diasSemana, candidatos} = semanasInfo[idx];
+    for(const perm of candidatos){
+      let prev = lastCat, ok = true;
+      for(let i=0;i<perm.length;i++){
+        if(prev !== null && calFamilyClash(prev, perm[i])){ ok=false; break; }
+        prev = perm[i];
+      }
+      if(ok){
+        for(let i=0;i<perm.length;i++){
+          if(colUsado[diasSemana[i].col].has(perm[i])){ ok=false; break; }
+        }
+      }
+      if(!ok) continue;
+      diasSemana.forEach((dObj,i) => { resultado[dObj.fecha] = perm[i]; colUsado[dObj.col].add(perm[i]); });
+      if(backtrack(idx+1, perm[perm.length-1])) return true;
+      diasSemana.forEach((dObj,i) => { delete resultado[dObj.fecha]; colUsado[dObj.col].delete(perm[i]); });
+    }
+    return false;
+  }
+
+  if(!backtrack(0, lastCatInicial)) throw new Error('No se encontró una combinación válida para este mes');
+  return resultado;
+}
+
+async function loadCalendario(){
+  const grid = document.getElementById('cal-grid');
+  if(!API_URL){
+    grid.innerHTML = '<div class="empty-state"><div class="icon">⚙</div><h3>Sin configurar</h3><p>Configura la conexión con Google Sheets pulsando ⚙</p></div>';
+    return;
+  }
+  try {
+    grid.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+    const res = await apiGet('list_calendario');
+    if(res.error){ showCalendarioUnavailable(res.error); return; }
+    calendarioMap = {};
+    (res.items||[]).forEach(it => { calendarioMap[it.fecha] = it.tipo; });
+    calendarioLoaded = true;
+    renderCalendario();
+  } catch(e){
+    showCalendarioUnavailable('el backend todavía no tiene la acción "list_calendario"');
+  }
+}
+
+function showCalendarioUnavailable(motivo){
+  document.getElementById('cal-grid').innerHTML =
+    '<div class="empty-state"><div class="icon">🚧</div><h3>Aún no conectado</h3>'+
+    '<p>No se ha podido cargar el calendario ('+escapeHtml(motivo)+').<br>Falta añadir el guardado de calendario al Apps Script.</p></div>';
+}
+
+function navCalendario(delta){
+  calMesActual = new Date(calMesActual.getFullYear(), calMesActual.getMonth()+delta, 1);
+  renderCalendario();
+}
+
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function renderCalendario(){
+  const year = calMesActual.getFullYear(), monthIdx = calMesActual.getMonth();
+  document.getElementById('cal-mes-titulo').textContent = MESES_ES[monthIdx] + ' ' + year;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(d => {
+    const el = document.createElement('div'); el.className='cal-dow'; el.textContent=d;
+    grid.appendChild(el);
+  });
+  const primerDia = new Date(year, monthIdx, 1);
+  const colInicio = (primerDia.getDay()+6)%7; // lun=0..dom=6
+  for(let i=0;i<colInicio;i++){
+    const el = document.createElement('div'); el.className='cal-cell empty';
+    grid.appendChild(el);
+  }
+  const ultimoDia = new Date(year, monthIdx+1, 0).getDate();
+  for(let d=1; d<=ultimoDia; d++){
+    const dt = new Date(year, monthIdx, d);
+    const fecha = calIsoDate(dt);
+    const esDomingo = dt.getDay()===0;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (esDomingo ? ' closed' : '');
+    const num = document.createElement('div'); num.className='cal-num'; num.textContent=d;
+    cell.appendChild(num);
+    if(esDomingo){
+      const tag = document.createElement('div'); tag.style.cssText='font-size:9px;color:var(--gt)'; tag.textContent='Cerrado';
+      cell.appendChild(tag);
+    } else {
+      const tipo = calendarioMap[fecha];
+      if(tipo && CAL_LABEL[tipo]){
+        const [func, cal] = CAL_LABEL[tipo];
+        const tf = document.createElement('div'); tf.className='cal-tag func'; tf.textContent=func;
+        cell.appendChild(tf);
+        if(cal){ const tc = document.createElement('div'); tc.className='cal-tag cal'; tc.textContent=cal; cell.appendChild(tc); }
+      }
+      cell.onclick = () => openDiaCalendario(fecha);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+let calDiaSeleccionado = null;
+function openDiaCalendario(fecha){
+  calDiaSeleccionado = fecha;
+  const [y,m,d] = fecha.split('-').map(Number);
+  document.getElementById('cal-dia-titulo').textContent = d+' de '+MESES_ES[m-1].toLowerCase();
+  const opciones = document.getElementById('cal-dia-opciones');
+  opciones.innerHTML = CAL_CATS.map(cat => {
+    const [func, cal] = CAL_LABEL[cat];
+    return '<button class="cal-tipo-btn" onclick="setDiaCalendario(\''+cat+'\')">'+escapeHtml(func)+(cal?' <span class="sub">/ '+escapeHtml(cal)+'</span>':'')+'</button>';
+  }).join('');
+  openModal('modal-cal-dia');
+}
+
+async function setDiaCalendario(tipo){
+  if(!calDiaSeleccionado) return;
+  if(tipo) calendarioMap[calDiaSeleccionado] = tipo;
+  else delete calendarioMap[calDiaSeleccionado];
+  closeModal('modal-cal-dia');
+  renderCalendario();
+  await guardarMesCalendario();
+}
+
+async function guardarMesCalendario(){
+  const year = calMesActual.getFullYear(), monthIdx = calMesActual.getMonth();
+  const mes = year+'-'+String(monthIdx+1).padStart(2,'0');
+  const dias = calDiasHabilesDelMes(year, monthIdx)
+    .filter(d => calendarioMap[d.fecha])
+    .map(d => ({fecha:d.fecha, tipo:calendarioMap[d.fecha]}));
+  try {
+    const res = await apiPost('save_calendario_mes', {mes, dias});
+    if(res.error){ showToast('Error al guardar: '+res.error,'error'); return; }
+    showToast('✅ Calendario guardado');
+  } catch(e){
+    showToast('Error al guardar el calendario','error');
+  }
+}
+
+async function generarMesAuto(){
+  const year = calMesActual.getFullYear(), monthIdx = calMesActual.getMonth();
+  try {
+    const resultado = generarMesCalendario(year, monthIdx, calendarioMap);
+    // limpiar los dias de este mes y aplicar el resultado nuevo
+    calDiasHabilesDelMes(year, monthIdx).forEach(d => delete calendarioMap[d.fecha]);
+    Object.assign(calendarioMap, resultado);
+    renderCalendario();
+    await guardarMesCalendario();
+  } catch(e){
+    showToast('No se pudo generar el mes: '+e.message, 'error');
+  }
+}
+
+function descargarImagenCalendario(){
+  const year = calMesActual.getFullYear(), monthIdx = calMesActual.getMonth();
+  const dias = calDiasHabilesDelMes(year, monthIdx);
+  const primerDia = new Date(year, monthIdx, 1);
+  const colInicio = (primerDia.getDay()+6)%7;
+  const ultimoDia = new Date(year, monthIdx+1, 0).getDate();
+  const totalCeldas = colInicio + ultimoDia;
+  const filas = Math.ceil(totalCeldas/7);
+
+  const colW = 130, rowH = 108, padX = 30, topH = 110, legendH = 50;
+  const W = padX*2 + colW*7;
+  const H = topH + 22 + filas*rowH + legendH;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#0d0d0d'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#F8F1E3';
+  ctx.font = 'bold 34px sans-serif';
+  ctx.fillText(MESES_ES[monthIdx].toUpperCase()+' '+year, padX, 48);
+  ctx.fillStyle = '#888'; ctx.font = '13px sans-serif';
+  ctx.fillText('codektraining.es', padX, 70);
+  ctx.strokeStyle = '#97272E'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(padX, 84); ctx.lineTo(W-padX, 84); ctx.stroke();
+
+  const dow = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+  ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#888';
+  dow.forEach((d,i) => ctx.fillText(d, padX + i*colW, topH));
+
+  function celda(col, row, textos, cerrado){
+    const x = padX + col*colW, y = topH + 14 + row*rowH;
+    ctx.fillStyle = cerrado ? 'rgba(255,255,255,.02)' : '#1a1a1a';
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+    roundRect(ctx, x, y, colW-8, rowH-10, 8); ctx.fill(); ctx.stroke();
+    return {x:x+8, y:y+8};
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  function tag(x,y,texto,bg,fg){
+    ctx.font = 'bold 9px sans-serif';
+    const w = ctx.measureText(texto).width + 10;
+    ctx.fillStyle = bg; roundRect(ctx,x,y,w,16,4); ctx.fill();
+    ctx.fillStyle = fg; ctx.fillText(texto, x+5, y+11);
+    return y+20;
+  }
+
+  let cursor = colInicio;
+  for(let d=1; d<=ultimoDia; d++, cursor++){
+    const col = cursor%7, row = Math.floor(cursor/7);
+    const dt = new Date(year, monthIdx, d);
+    const fecha = calIsoDate(dt);
+    const esDomingo = dt.getDay()===0;
+    const p = celda(col, row, null, esDomingo);
+    ctx.fillStyle = esDomingo ? '#888' : '#F8F1E3';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(String(d), p.x, p.y+10);
+    let ty = p.y + 24;
+    if(esDomingo){
+      ctx.fillStyle = '#888'; ctx.font = '9px sans-serif';
+      ctx.fillText('CERRADO', p.x, ty+8);
+    } else {
+      const tipo = calendarioMap[fecha];
+      if(tipo && CAL_LABEL[tipo]){
+        const [func, cal] = CAL_LABEL[tipo];
+        ty = tag(p.x, ty, func.toUpperCase(), 'rgba(58,124,208,.25)', '#5a9cf0');
+        if(cal) tag(p.x, ty, cal.toUpperCase(), 'rgba(58,173,110,.25)', '#5fd08a');
+      }
+    }
+  }
+
+  const legY = topH + 14 + filas*rowH + 26;
+  ctx.font = '12px sans-serif';
+  let lx = padX;
+  [['#3a7cd0','Funcional'],['#3aad6e','Calistenia'],['#333','Descanso']].forEach(([color,label]) => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx+5, legY-4, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#888'; ctx.fillText(label, lx+16, legY);
+    lx += 16 + ctx.measureText(label).width + 24;
+  });
+
+  const a = document.createElement('a');
+  a.download = 'codek-calendario-'+MESES_ES[monthIdx].toLowerCase()+'-'+year+'.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
 }
 
 function quitarTildes(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
