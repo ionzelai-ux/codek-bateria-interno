@@ -502,7 +502,10 @@ async function uploadVideo(input){
   if(!extEsVideo && !tipoDeclaraVideo){
     showToast('Elige un archivo de vídeo','error');
     status.style.color = 'var(--red)';
-    status.textContent = 'Ese archivo no es un vídeo';
+    // Mensaje con el detalle de lo que ha detectado el navegador (nombre/tipo/tamaño),
+    // para poder diagnosticar por qué un archivo que SÍ es un vídeo no está pasando
+    // la validación en algunos móviles, sin tener que adivinarlo a ciegas.
+    status.textContent = 'Ese archivo no es un vídeo (nombre: "'+file.name+'" · tipo detectado: '+(file.type || '(vacío)')+' · '+(file.size/1024).toFixed(0)+'KB)';
     input.value=''; return;
   }
   if(file.size > VIDEO_MAX_MB*1024*1024){
