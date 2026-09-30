@@ -480,11 +480,13 @@ function slugify(s){
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'video';
 }
 
-// Extensión -> Content-Type de vídeo conocido. Algunos móviles (sobre todo
-// Android más antiguos, según el navegador/galería usada para elegir el
-// archivo) no rellenan file.type y lo dejan vacío u "application/octet-stream",
-// aunque el archivo sea un vídeo de verdad -- por eso no podemos fiarnos solo
-// de file.type para rechazar el archivo, hace falta mirar también la extensión.
+// Extensión -> Content-Type de vídeo conocido. No podemos fiarnos de
+// file.type para decidir si el archivo es un vídeo: según el móvil/galería
+// usada para elegirlo, viene vacío, "application/octet-stream", o incluso
+// algo que no empieza por "video/" aunque el archivo sea un vídeo real
+// (visto con un Samsung Galaxy: un .mp4 de verdad rechazado por esto).
+// Si el NOMBRE del archivo tiene una extensión de vídeo conocida, nos
+// fiamos de eso directamente y ni miramos file.type.
 const VIDEO_EXT_MIME = {
   mp4:'video/mp4', m4v:'video/mp4', mov:'video/quicktime', '3gp':'video/3gpp',
   '3gpp':'video/3gpp', webm:'video/webm', mkv:'video/x-matroska', avi:'video/x-msvideo',
@@ -497,8 +499,7 @@ async function uploadVideo(input){
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   const extEsVideo = !!VIDEO_EXT_MIME[ext];
   const tipoDeclaraVideo = file.type.startsWith('video/');
-  const tipoVacioOGenerico = !file.type || file.type === 'application/octet-stream';
-  if(!tipoDeclaraVideo && !(tipoVacioOGenerico && extEsVideo)){
+  if(!extEsVideo && !tipoDeclaraVideo){
     showToast('Elige un archivo de vídeo','error');
     status.style.color = 'var(--red)';
     status.textContent = 'Ese archivo no es un vídeo';
@@ -513,7 +514,7 @@ async function uploadVideo(input){
   }
   status.style.color = '';
   const nombre = document.getElementById('ex-nombre').value.trim();
-  const contentType = tipoDeclaraVideo ? file.type : (VIDEO_EXT_MIME[ext] || 'video/mp4');
+  const contentType = VIDEO_EXT_MIME[ext] || (tipoDeclaraVideo ? file.type : 'video/mp4');
   const path = slugify(nombre) + '-' + Date.now() + '.' + (ext || 'mp4');
   status.textContent = 'Subiendo…';
   input.disabled = true;
