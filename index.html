@@ -480,11 +480,25 @@ function slugify(s){
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'video';
 }
 
+// Extensión -> Content-Type de vídeo conocido. Algunos móviles (sobre todo
+// Android más antiguos, según el navegador/galería usada para elegir el
+// archivo) no rellenan file.type y lo dejan vacío u "application/octet-stream",
+// aunque el archivo sea un vídeo de verdad -- por eso no podemos fiarnos solo
+// de file.type para rechazar el archivo, hace falta mirar también la extensión.
+const VIDEO_EXT_MIME = {
+  mp4:'video/mp4', m4v:'video/mp4', mov:'video/quicktime', '3gp':'video/3gpp',
+  '3gpp':'video/3gpp', webm:'video/webm', mkv:'video/x-matroska', avi:'video/x-msvideo',
+  wmv:'video/x-ms-wmv', flv:'video/x-flv', hevc:'video/mp4'
+};
 async function uploadVideo(input){
   const file = input.files && input.files[0];
   const status = document.getElementById('video-upload-status');
   if(!file) return;
-  if(!file.type.startsWith('video/')){
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const extEsVideo = !!VIDEO_EXT_MIME[ext];
+  const tipoDeclaraVideo = file.type.startsWith('video/');
+  const tipoVacioOGenerico = !file.type || file.type === 'application/octet-stream';
+  if(!tipoDeclaraVideo && !(tipoVacioOGenerico && extEsVideo)){
     showToast('Elige un archivo de vídeo','error');
     status.style.color = 'var(--red)';
     status.textContent = 'Ese archivo no es un vídeo';
@@ -499,14 +513,14 @@ async function uploadVideo(input){
   }
   status.style.color = '';
   const nombre = document.getElementById('ex-nombre').value.trim();
-  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-  const path = slugify(nombre) + '-' + Date.now() + '.' + ext;
+  const contentType = tipoDeclaraVideo ? file.type : (VIDEO_EXT_MIME[ext] || 'video/mp4');
+  const path = slugify(nombre) + '-' + Date.now() + '.' + (ext || 'mp4');
   status.textContent = 'Subiendo…';
   input.disabled = true;
   try {
     const r = await fetch(VIDEO_SB_URL + '/storage/v1/object/' + VIDEO_BUCKET + '/' + path, {
       method: 'POST',
-      headers: { 'apikey': VIDEO_SB_KEY, 'Authorization': 'Bearer '+VIDEO_SB_KEY, 'Content-Type': file.type },
+      headers: { 'apikey': VIDEO_SB_KEY, 'Authorization': 'Bearer '+VIDEO_SB_KEY, 'Content-Type': contentType },
       body: file
     });
     if(!r.ok){ throw new Error(await r.text()); }
