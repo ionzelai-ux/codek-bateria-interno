@@ -492,8 +492,69 @@ const VIDEO_EXT_MIME = {
   '3gpp':'video/3gpp', webm:'video/webm', mkv:'video/x-matroska', avi:'video/x-msvideo',
   wmv:'video/x-ms-wmv', flv:'video/x-flv', hevc:'video/mp4'
 };
+// Comprime un vídeo en el propio navegador volviéndolo a grabar (720p máx., 30 fps,
+// ~3 Mbps, sin audio) cuando pesa más del límite. Pensado para los vídeos de móviles
+// Samsung, que graban a ~30 Mbps (1080p/60fps) y se pasan de tamaño con 11-12 s.
+// Tarda lo que dura el vídeo (se reproduce mientras se graba). Devuelve un File .mp4
+// nuevo, o null si el navegador no puede (entonces se muestra el aviso de siempre).
+async function comprimirVideo(file, status){
+  if(typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) return null;
+  const mimeType = ['video/mp4;codecs=avc1.42E01E','video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+  if(!mimeType) return null;
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true; video.preload = 'auto'; video.src = url;
+  let stream = null;
+  try {
+    await new Promise((res, rej) => {
+      video.onloadedmetadata = res;
+      video.onerror = () => rej(new Error('no se puede leer el vídeo'));
+    });
+    const dur = video.duration;
+    if(!isFinite(dur) || dur <= 0 || dur > 120) return null;
+    const escala = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    const w = Math.max(2, Math.round(video.videoWidth*escala/2)*2);
+    const h = Math.max(2, Math.round(video.videoHeight*escala/2)*2);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    stream = canvas.captureStream(30);
+    const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 3000000 });
+    const chunks = [];
+    rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    const parado = new Promise(res => { rec.onstop = res; });
+    rec.start(1000);
+    await video.play();
+    await new Promise((res, rej) => {
+      const limite = setTimeout(() => rej(new Error('tiempo agotado')), (dur*3 + 15) * 1000);
+      const pintar = () => {
+        ctx.drawImage(video, 0, 0, w, h);
+        status.textContent = '⏳ Comprimiendo vídeo… ' + Math.min(100, Math.round(video.currentTime/dur*100)) + '% (no cambies de pestaña ni bloquees la pantalla)';
+        if(video.ended){ clearTimeout(limite); res(); return; }
+        requestAnimationFrame(pintar);
+      };
+      pintar();
+    });
+    ctx.drawImage(video, 0, 0, w, h);
+    await new Promise(r => setTimeout(r, 150));
+    rec.stop();
+    await parado;
+    const blob = new Blob(chunks, { type: 'video/mp4' });
+    if(!blob.size) return null;
+    const base = (file.name || 'video').replace(/\.[^.]*$/, '') || 'video';
+    return new File([blob], base + '.mp4', { type: 'video/mp4' });
+  } catch(err){
+    console.error('comprimirVideo', err);
+    return null;
+  } finally {
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    video.removeAttribute('src'); video.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function uploadVideo(input){
-  const file = input.files && input.files[0];
+  let file = input.files && input.files[0];
   const status = document.getElementById('video-upload-status');
   if(!file) return;
   // Caso real visto con un Samsung: el selector de archivos entrega un File
@@ -506,7 +567,7 @@ async function uploadVideo(input){
     status.textContent = '❌ "'+file.name+'" pesa 0KB (está vacío). Suele pasar cuando el vídeo está en la nube (Samsung Cloud / Google Fotos) y el teléfono no lo tiene descargado. Ábrelo primero en la app de Galería para descargarlo del todo, y luego inténtalo de nuevo aquí.';
     input.value=''; return;
   }
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  let ext = (file.name.split('.').pop() || '').toLowerCase();
   const extEsVideo = !!VIDEO_EXT_MIME[ext];
   const tipoDeclaraVideo = file.type.startsWith('video/');
   if(!extEsVideo && !tipoDeclaraVideo){
@@ -520,10 +581,22 @@ async function uploadVideo(input){
   }
   if(file.size > VIDEO_MAX_MB*1024*1024){
     const mb = (file.size/1024/1024).toFixed(1);
-    showToast('Vídeo demasiado grande (máx '+VIDEO_MAX_MB+'MB)','error');
-    status.style.color = 'var(--red)';
-    status.textContent = '❌ El vídeo pesa '+mb+'MB, el máximo es '+VIDEO_MAX_MB+'MB. Prueba a grabarlo más corto o con menos calidad.';
-    input.value=''; return;
+    // Se pasa del límite: en vez de rechazarlo, se intenta comprimir en el navegador
+    status.style.color = '';
+    status.textContent = '⏳ El vídeo pesa '+mb+'MB: preparando compresión…';
+    input.disabled = true;
+    const comprimido = await comprimirVideo(file, status);
+    input.disabled = false;
+    if(comprimido && comprimido.size > 0 && comprimido.size <= VIDEO_MAX_MB*1024*1024){
+      showToast('Vídeo comprimido de '+mb+'MB a '+(comprimido.size/1024/1024).toFixed(1)+'MB','success');
+      file = comprimido;
+      ext = 'mp4';
+    } else {
+      showToast('Vídeo demasiado grande (máx '+VIDEO_MAX_MB+'MB)','error');
+      status.style.color = 'var(--red)';
+      status.textContent = '❌ El vídeo pesa '+mb+'MB, el máximo es '+VIDEO_MAX_MB+'MB y no se ha podido comprimir solo. Prueba a grabarlo más corto o con menos calidad.';
+      input.value=''; return;
+    }
   }
   status.style.color = '';
   const nombre = document.getElementById('ex-nombre').value.trim();
