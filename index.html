@@ -52,6 +52,12 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .bloque-ex-list li .ex-nombre{font-weight:600}
 .bloque-ex-list li .ex-detalle{color:var(--gt);font-size:12px;white-space:nowrap}
 .pend-inline{color:var(--yellow);font-size:10px;margin-left:6px}
+.bloque-grupo{border:1px solid var(--gl);border-left:3px solid var(--granate);border-radius:8px;padding:10px 12px 4px;margin-bottom:10px;background:rgba(151,39,46,.06)}
+.bloque-grupo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.bloque-grupo-id{font-family:var(--bebas);font-size:20px;letter-spacing:1px;color:var(--cream)}
+.bloque-grupo-nota{font-size:11px;color:var(--gt)}
+.bloque-grupo .bloque-ex-list li{background:var(--gd)}
+.bloque-ex-list li.bloque-mas{background:none;padding:0;margin:-3px 0 3px;justify-content:center;color:var(--granate);font-weight:800;font-size:16px;line-height:1}
 .ex-row{background:var(--gd);margin:8px 20px;border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;border:1px solid transparent}
 .ex-row:hover{background:var(--gm);border-color:var(--gl)}
 .ex-main{flex:1;min-width:0}
@@ -774,15 +780,37 @@ function bloqueHtml(titulo, texto){
     +'<div class="bloque-formato">'+escapeHtml(texto)+'</div></div>';
 }
 
+function exItemHtml(ex){
+  return '<li><span class="ex-nombre">'+escapeHtml(ex.nombre)+(ex.pendiente?'<span class="pend-inline">● pendiente revisar</span>':'')+'</span>'
+    +(ex.detalle ? '<span class="ex-detalle">'+escapeHtml(ex.detalle)+'</span>' : '')+'</li>';
+}
+
+// Los ejercicios consecutivos con el mismo "grupo" (A1, A2... = biseries) se pintan juntos
+// en un recuadro con su título y una nota (rondas/descanso) y un "+" entre ellos, para que
+// se vea qué ejercicios van emparejados. Sin "grupo" se pintan como lista normal.
 function bloqueSectionHtml(titulo, bloque){
   if(!bloque || !(bloque.ejercicios||[]).length) return '';
-  const items = bloque.ejercicios.map(ex =>
-    '<li><span class="ex-nombre">'+escapeHtml(ex.nombre)+(ex.pendiente?'<span class="pend-inline">● pendiente revisar</span>':'')+'</span>'
-    +(ex.detalle ? '<span class="ex-detalle">'+escapeHtml(ex.detalle)+'</span>' : '')+'</li>'
-  ).join('');
+  const exs = bloque.ejercicios;
+  let html = '', i = 0;
+  while(i < exs.length){
+    let j = i;
+    const g = exs[i].grupo;
+    if(g){
+      while(j < exs.length && exs[j].grupo === g) j++;
+      const grupo = exs.slice(i, j);
+      const nota = (grupo.find(e => e.grupoNota) || {}).grupoNota || '';
+      html += '<div class="bloque-grupo"><div class="bloque-grupo-head"><span class="bloque-grupo-id">'+escapeHtml(g)+'</span>'
+        +(nota ? '<span class="bloque-grupo-nota">'+escapeHtml(nota)+'</span>' : '')+'</div>'
+        +'<ul class="bloque-ex-list">'+grupo.map(exItemHtml).join('<li class="bloque-mas">+</li>')+'</ul></div>';
+    } else {
+      while(j < exs.length && !exs[j].grupo) j++;
+      html += '<ul class="bloque-ex-list">'+exs.slice(i, j).map(exItemHtml).join('')+'</ul>';
+    }
+    i = j;
+  }
   return '<div class="bloque-section"><div class="bloque-title">'+escapeHtml(titulo)+'</div>'
     +(bloque.formato ? '<div class="bloque-formato">'+escapeHtml(bloque.formato)+'</div>' : '')
-    +'<ul class="bloque-ex-list">'+items+'</ul></div>';
+    +html+'</div>';
 }
 
 // ═══════════════════════════════════════════
