@@ -52,6 +52,10 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .bloque-ex-list li .ex-nombre{font-weight:600}
 .bloque-ex-list li .ex-detalle{color:var(--gt);font-size:12px;white-space:nowrap}
 .pend-inline{color:var(--yellow);font-size:10px;margin-left:6px}
+.ex-video-btn{background:var(--granate);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:11px;cursor:pointer;margin-left:10px;flex-shrink:0;line-height:1;padding:0;vertical-align:middle}
+.ex-video-btn:hover{background:var(--granate-d)}
+.video-ex-aviso{font-size:13px;color:var(--gt);padding:10px 2px;line-height:1.5}
+.video-ex-aviso a{color:var(--yellow)}
 .bloque-grupo{border:1px solid var(--gl);border-left:3px solid var(--granate);border-radius:8px;padding:10px 12px 4px;margin-bottom:10px;background:rgba(151,39,46,.06)}
 .bloque-grupo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .bloque-grupo-id{font-family:var(--bebas);font-size:20px;letter-spacing:1px;color:var(--cream)}
@@ -299,6 +303,16 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
       <button class="modal-close" onclick="closeModal('modal-clase')">✕</button>
     </div>
     <div id="clase-modal-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-video-ex">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title" id="video-ex-title">Vídeo</div>
+      <button class="modal-close" onclick="closeModal('modal-video-ex')">✕</button>
+    </div>
+    <div id="video-ex-body"></div>
   </div>
 </div>
 
@@ -780,8 +794,31 @@ function bloqueHtml(titulo, texto){
     +'<div class="bloque-formato">'+escapeHtml(texto)+'</div></div>';
 }
 
+// Vídeo de un ejercicio de la clase, buscándolo por nombre (sin tildes ni mayúsculas) en la batería
+function videoDeEjercicio(nombre){
+  const n = quitarTildes(String(nombre||'').toLowerCase()).trim();
+  if(!n) return null;
+  return ejercicios.find(x => x.video_url && quitarTildes(String(x.nombre||'').toLowerCase()).trim() === n) || null;
+}
+
+function abrirVideoEx(id){
+  const e = ejercicios.find(x => x.id === id);
+  if(!e || !e.video_url) return;
+  document.getElementById('video-ex-title').textContent = e.nombre;
+  const body = document.getElementById('video-ex-body');
+  body.innerHTML = '<video id="video-ex-player" controls playsinline autoplay loop muted style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>'
+    + '<div class="video-ex-aviso" id="video-ex-aviso" style="display:none">No se puede reproducir aquí (formato del móvil). <a href="'+escapeHtml(e.video_url)+'" target="_blank" rel="noopener">Abrir el vídeo en una pestaña nueva</a></div>'
+    + (e.notas ? '<div class="video-ex-aviso">'+escapeHtml(e.notas)+'</div>' : '');
+  const v = document.getElementById('video-ex-player');
+  v.onerror = () => { document.getElementById('video-ex-aviso').style.display = 'block'; };
+  v.src = e.video_url;
+  openModal('modal-video-ex');
+}
+
 function exItemHtml(ex){
-  return '<li><span class="ex-nombre">'+escapeHtml(ex.nombre)+(ex.pendiente?'<span class="pend-inline">● pendiente revisar</span>':'')+'</span>'
+  const v = videoDeEjercicio(ex.nombre);
+  const btnVideo = v ? '<button class="ex-video-btn" title="Ver vídeo de '+escapeHtml(v.nombre)+'" onclick="abrirVideoEx(\''+v.id+'\')">▶</button>' : '';
+  return '<li><span class="ex-nombre">'+escapeHtml(ex.nombre)+btnVideo+(ex.pendiente?'<span class="pend-inline">● pendiente revisar</span>':'')+'</span>'
     +(ex.detalle ? '<span class="ex-detalle">'+escapeHtml(ex.detalle)+'</span>' : '')+'</li>';
 }
 
@@ -1397,7 +1434,10 @@ function saveConfig(){
 }
 
 function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id === 'modal-video-ex') document.getElementById('video-ex-body').innerHTML = '';
+}
 let toastT;
 function showToast(msg, type){
   const t = document.getElementById('toast');
