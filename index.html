@@ -323,7 +323,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
       <button class="modal-close" onclick="closeModal('modal-ex')">✕</button>
     </div>
     <div class="form-group"><label class="form-label">Nombre</label>
-      <input class="form-input" id="ex-nombre" placeholder="Ej: Sentadilla búlgara"></div>
+      <input class="form-input" id="ex-nombre" placeholder="Ej: Sentadilla bulgara (sin tildes)" onblur="this.value=nombreSinTildes(this.value)"></div>
     <div class="form-group"><label class="form-label">Grupo muscular (multi)</label>
       <div class="multi-chips" id="chips-grupo"></div></div>
     <div class="form-group"><label class="form-label">Patrón de movimiento (multi)</label>
@@ -1375,10 +1375,15 @@ function editEx(id){
   openModal('modal-ex');
 }
 
+// Nunca tildes en los nombres de ejercicio (si no, luego no salen al buscar sin tilde). La ñ se conserva: es una letra.
+function nombreSinTildes(s){
+  var m = {'á':'a','é':'e','í':'i','ó':'o','ú':'u','ü':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U','Ü':'U','à':'a','è':'e','ì':'i','ò':'o','ù':'u'};
+  return String(s).replace(/[áéíóúüÁÉÍÓÚÜàèìòù]/g, function(c){ return m[c]; });
+}
 function gatherExFormData(){
   const getChipVals = key => Array.from(document.querySelectorAll('.multi-chip[data-key="'+key+'"].sel')).map(c => c.dataset.val).join(', ');
   return {
-    nombre: document.getElementById('ex-nombre').value.trim(),
+    nombre: nombreSinTildes(document.getElementById('ex-nombre').value.trim()),
     grupo_muscular: getChipVals('grupo'),
     patron: getChipVals('patron'),
     materiales: getChipVals('materiales'),
