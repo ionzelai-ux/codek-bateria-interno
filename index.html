@@ -152,6 +152,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
 .cal-cell.closed{background:rgba(255,255,255,.02);cursor:default}
 .cal-num{font-size:12px;font-weight:700}
 .cal-cell.closed .cal-num{color:var(--gt)}
+.cal-cell.festivo .cal-num{text-decoration:line-through}
 .cal-tag{font-size:9px;font-weight:700;letter-spacing:.2px;text-transform:uppercase;padding:2px 5px;border-radius:4px;line-height:1.3}
 .cal-tag.func{background:rgba(58,124,208,.18);color:var(--azul);border:1px solid rgba(58,124,208,.4)}
 .cal-tag.cal{background:rgba(58,173,110,.18);color:var(--green);border:1px solid rgba(58,173,110,.4)}
@@ -273,7 +274,7 @@ body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--cream);
   <div class="cal-legend">
     <span><i class="cal-dot func"></i> Funcional</span>
     <span><i class="cal-dot cal"></i> Calistenia</span>
-    <span><i class="cal-dot desc"></i> Descanso / domingo</span>
+    <span><i class="cal-dot desc"></i> Descanso / domingo / festivo</span>
     <span style="margin-left:auto;color:var(--gt)">Toca un día para asignar o cambiar el entrenamiento</span>
   </div>
   <div class="cal-grid" id="cal-grid"><div class="empty-state"><div class="spinner"></div></div></div>
@@ -860,7 +861,8 @@ const CAL_LABEL = {
   EH:['Empuje Horizontal','Plancha'], EV:['Empuje Vertical','Pino'],
   P:['Pierna','Pistol'], R:['Resistencia', null]
 };
-let calendarioMap = {};       // fecha ISO -> tipo (TV/TH/EH/EV/P/R)
+const CAL_FESTIVO = 'F';      // dia sin clase (festivo): se guarda como tipo 'F' porque la hoja no sabe borrar filas
+let calendarioMap = {};       // fecha ISO -> tipo (TV/TH/EH/EV/P/R) o 'F' (festivo)
 let calendarioLoaded = false;
 let calMesActual = (function(){ const d=new Date(); d.setDate(1); return d; })();
 
@@ -918,7 +920,7 @@ function generarMesCalendario(year, monthIdx, mapaHistorico){
   function ultimoTipoAntesDe(fechaISO){
     let mejor = null;
     Object.keys(mapaHistorico).forEach(f => {
-      if(f < fechaISO && mapaHistorico[f] && (!mejor || f > mejor)) mejor = f;
+      if(f < fechaISO && mapaHistorico[f] && mapaHistorico[f] !== CAL_FESTIVO && (!mejor || f > mejor)) mejor = f;
     });
     return mejor ? mapaHistorico[mejor] : null;
   }
@@ -931,7 +933,7 @@ function generarMesCalendario(year, monthIdx, mapaHistorico){
       const dt = new Date(y, m-1, d+i);
       const f = calIsoDate(dt);
       const pertenece = dt.getFullYear()===year && dt.getMonth()===monthIdx;
-      if(!pertenece && mapaHistorico[f]) usadosEstaSemana.add(mapaHistorico[f]);
+      if(!pertenece && mapaHistorico[f] && mapaHistorico[f] !== CAL_FESTIVO) usadosEstaSemana.add(mapaHistorico[f]);
     }
     const disponibles = CAL_CATS.filter(c => !usadosEstaSemana.has(c));
     const listas = [];
@@ -1025,7 +1027,8 @@ function renderCalendario(){
     const fecha = calIsoDate(dt);
     const esDomingo = dt.getDay()===0;
     const cell = document.createElement('div');
-    cell.className = 'cal-cell' + (esDomingo ? ' closed' : '');
+    const esFestivo = !esDomingo && calendarioMap[fecha] === CAL_FESTIVO;
+    cell.className = 'cal-cell' + (esDomingo ? ' closed' : '') + (esFestivo ? ' closed festivo' : '');
     const num = document.createElement('div'); num.className='cal-num'; num.textContent=d;
     cell.appendChild(num);
     if(esDomingo){
@@ -1033,7 +1036,10 @@ function renderCalendario(){
       cell.appendChild(tag);
     } else {
       const tipo = calendarioMap[fecha];
-      if(tipo && CAL_LABEL[tipo]){
+      if(esFestivo){
+        const tag = document.createElement('div'); tag.style.cssText='font-size:9px;color:var(--gt)'; tag.textContent='Festivo';
+        cell.appendChild(tag);
+      } else if(tipo && CAL_LABEL[tipo]){
         const [func, cal] = CAL_LABEL[tipo];
         const tf = document.createElement('div'); tf.className='cal-tag func'; tf.textContent=func;
         cell.appendChild(tf);
@@ -1054,7 +1060,7 @@ function openDiaCalendario(fecha){
   opciones.innerHTML = CAL_CATS.map(cat => {
     const [func, cal] = CAL_LABEL[cat];
     return '<button class="cal-tipo-btn" onclick="setDiaCalendario(\''+cat+'\')">'+escapeHtml(func)+(cal?' <span class="sub">/ '+escapeHtml(cal)+'</span>':'')+'</button>';
-  }).join('');
+  }).join('') + '<button class="cal-tipo-btn" onclick="setDiaCalendario(\''+CAL_FESTIVO+'\')">Festivo <span class="sub">/ sin clase</span></button>';
   openModal('modal-cal-dia');
 }
 
@@ -1086,9 +1092,11 @@ async function generarMesAuto(){
   const year = calMesActual.getFullYear(), monthIdx = calMesActual.getMonth();
   try {
     const resultado = generarMesCalendario(year, monthIdx, calendarioMap);
-    // limpiar los dias de este mes y aplicar el resultado nuevo
+    // limpiar los dias de este mes y aplicar el resultado nuevo (los festivos se conservan)
+    const festivos = calDiasHabilesDelMes(year, monthIdx).filter(d => calendarioMap[d.fecha] === CAL_FESTIVO).map(d => d.fecha);
     calDiasHabilesDelMes(year, monthIdx).forEach(d => delete calendarioMap[d.fecha]);
     Object.assign(calendarioMap, resultado);
+    festivos.forEach(f => { calendarioMap[f] = CAL_FESTIVO; });
     renderCalendario();
     await guardarMesCalendario();
   } catch(e){
@@ -1151,14 +1159,20 @@ function descargarImagenCalendario(){
     const dt = new Date(year, monthIdx, d);
     const fecha = calIsoDate(dt);
     const esDomingo = dt.getDay()===0;
-    const p = celda(col, row, null, esDomingo);
-    ctx.fillStyle = esDomingo ? '#888' : '#F8F1E3';
+    const esFestivo = !esDomingo && calendarioMap[fecha] === CAL_FESTIVO;
+    const p = celda(col, row, null, esDomingo || esFestivo);
+    ctx.fillStyle = (esDomingo || esFestivo) ? '#888' : '#F8F1E3';
     ctx.font = 'bold 13px sans-serif';
     ctx.fillText(String(d), p.x, p.y+10);
+    if(esFestivo){
+      const wNum = ctx.measureText(String(d)).width;
+      ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(p.x-1, p.y+6); ctx.lineTo(p.x+wNum+1, p.y+6); ctx.stroke();
+    }
     let ty = p.y + 24;
-    if(esDomingo){
+    if(esDomingo || esFestivo){
       ctx.fillStyle = '#888'; ctx.font = '9px sans-serif';
-      ctx.fillText('CERRADO', p.x, ty+8);
+      ctx.fillText(esFestivo ? 'FESTIVO' : 'CERRADO', p.x, ty+8);
     } else {
       const tipo = calendarioMap[fecha];
       if(tipo && CAL_LABEL[tipo]){
